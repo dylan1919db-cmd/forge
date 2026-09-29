@@ -1,0 +1,2382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Forge">
+<meta name="theme-color" content="#0a0a0a">
+<meta name="description" content="Manual-entry progressive overload tracker.">
+<title>Forge</title>
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23c8f04e'/%3E%3Cg stroke='%230a0a0a' stroke-width='5' stroke-linecap='round' fill='none'%3E%3Cpath d='M21 19v26M43 19v26M11 27v10M53 27v10M21 32h22'/%3E%3C/g%3E%3C/svg%3E">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0a0a0a; --s1:#141414; --s2:#1c1c1c; --s3:#242424;
+  --bd:rgba(255,255,255,.08); --bd2:rgba(255,255,255,.16);
+  --tx:#f2f2f2; --mu:#8a8a8a; --mu2:#5a5a5a;
+  --ac:#c8f04e; --acd:#0a0a0a;
+  --gn:#4ade80; --bl:#60a5fa; --or:#fb923c; --rd:#f87171; --pu:#a78bfa;
+  --r:14px; --r2:10px;
+  --sat:env(safe-area-inset-top,0px); --sab:env(safe-area-inset-bottom,0px);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{
+  background:var(--bg);color:var(--tx);
+  font-family:'DM Sans',-apple-system,system-ui,sans-serif;
+  font-size:15px;line-height:1.45;
+  overscroll-behavior-y:none;
+}
+input,button,select,textarea{font-family:inherit;font-size:inherit;color:inherit}
+button{background:none;border:none;cursor:pointer}
+.mono{font-family:'DM Mono',ui-monospace,monospace}
+
+/* ---------- LANDING ---------- */
+#landing{
+  position:fixed;inset:0;z-index:200;background:var(--bg);
+  display:flex;flex-direction:column;align-items:center;
+  padding:calc(var(--sat) + 30px) 22px calc(var(--sab) + 34px);
+  overflow:hidden;
+}
+#landing.hide{display:none}
+.lnd-glow{
+  position:absolute;top:38%;left:50%;width:560px;height:560px;margin:-280px 0 0 -280px;
+  border-radius:50%;pointer-events:none;
+  background:radial-gradient(circle,rgba(200,240,78,.17) 0%,rgba(200,240,78,.06) 40%,rgba(200,240,78,0) 68%);
+  animation:breathe 7s ease-in-out infinite;
+}
+@keyframes breathe{0%,100%{transform:scale(1);opacity:.8}50%{transform:scale(1.1);opacity:1}}
+.lnd-core{
+  position:relative;flex:1;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;width:100%
+}
+.lnd-mark{
+  width:98px;height:98px;border-radius:29px;background:var(--ac);
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 20px 64px rgba(200,240,78,.2);
+  animation:rise .6s cubic-bezier(.2,.9,.3,1) both
+}
+.lnd-mark svg{width:53px;height:53px}
+.lnd-h{
+  font-size:54px;font-weight:700;letter-spacing:-.045em;line-height:1;margin-top:28px;
+  animation:rise .6s .08s cubic-bezier(.2,.9,.3,1) both
+}
+.lnd-h span{color:var(--ac)}
+@keyframes rise{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+.btn-primary{
+  background:var(--ac);color:var(--acd);font-weight:700;font-size:17px;
+  padding:19px;border-radius:var(--r);width:100%;letter-spacing:-.01em;
+}
+.btn-primary:active{transform:scale(.985)}
+#btnStart{position:relative;max-width:430px;animation:rise .6s .16s cubic-bezier(.2,.9,.3,1) both}
+.btn-ghost{
+  background:var(--s1);border:1px solid var(--bd);color:var(--tx);
+  font-weight:500;padding:14px;border-radius:var(--r);width:100%;
+}
+
+/* ---------- APP SHELL ---------- */
+#app{display:none;flex-direction:column;min-height:100%;padding-bottom:calc(var(--sab) + 88px)}
+#app.show{display:flex}
+.hdr{
+  position:sticky;top:0;z-index:50;background:rgba(10,10,10,.93);
+  backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  border-bottom:1px solid var(--bd);
+  padding:calc(var(--sat) + 12px) 16px 12px;
+}
+.hdr-row{display:flex;align-items:center;gap:10px}
+.hdr-t{font-size:19px;font-weight:700;letter-spacing:-.025em;flex:1}
+.hdr-t small{display:block;font-size:10px;color:var(--mu);font-weight:500;letter-spacing:.1em;text-transform:uppercase;margin-top:1px}
+.chip{
+  background:var(--s2);border:1px solid var(--bd);border-radius:999px;
+  padding:6px 12px;font-size:12px;font-weight:600;color:var(--tx);white-space:nowrap
+}
+.chip.ac{background:rgba(200,240,78,.13);border-color:rgba(200,240,78,.35);color:var(--ac)}
+.icb{
+  width:36px;height:36px;border-radius:10px;background:var(--s2);border:1px solid var(--bd);
+  display:flex;align-items:center;justify-content:center;flex:0 0 auto
+}
+.icb svg{width:17px;height:17px;stroke:var(--tx);fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+
+.tabs{display:flex;gap:6px;margin-top:12px;background:var(--s1);padding:4px;border-radius:12px;border:1px solid var(--bd)}
+.tab{flex:1;padding:9px;border-radius:9px;font-size:13px;font-weight:600;color:var(--mu);text-align:center}
+.tab.on{background:var(--s3);color:var(--tx)}
+
+.wrap{padding:16px}
+.view{display:none}
+.view.on{display:block}
+
+/* ---------- WEEK STRIP ---------- */
+.wk{background:var(--s1);border:1px solid var(--bd);border-radius:var(--r);padding:14px;margin-bottom:14px}
+.wk-top{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+.wk-n{font-size:13px;font-weight:700;letter-spacing:-.01em}
+.wk-n b{color:var(--ac)}
+.wk-d{font-size:11px;color:var(--mu);flex:1}
+.wk-fin{font-size:11px;font-weight:600;color:var(--ac);background:rgba(200,240,78,.1);border:1px solid rgba(200,240,78,.28);padding:5px 10px;border-radius:999px}
+.wk-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}
+.wk-cell{
+  background:var(--s2);border:1px solid var(--bd);border-radius:var(--r2);
+  padding:10px 6px;text-align:center;position:relative;overflow:hidden
+}
+.wk-cell .lab{font-size:11px;font-weight:600;color:var(--mu);letter-spacing:-.01em}
+.wk-cell .ic{width:20px;height:20px;margin:6px auto 0;border-radius:50%;border:1.5px solid var(--bd2);display:flex;align-items:center;justify-content:center}
+.wk-cell .ic svg{width:11px;height:11px;stroke:var(--acd);fill:none;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+.wk-cell.done{border-color:rgba(200,240,78,.3);background:rgba(200,240,78,.07)}
+.wk-cell.done .lab{color:var(--ac)}
+.wk-cell.done .ic{background:var(--ac);border-color:var(--ac)}
+.wk-cell.next{border-color:var(--bd2)}
+.wk-cell.next:after{content:'NEXT';position:absolute;top:0;left:0;right:0;font-size:7px;letter-spacing:.14em;background:var(--s3);color:var(--mu);padding:2px}
+.wk-cell.next .lab{margin-top:8px}
+.wk-cell .cnt{position:absolute;top:3px;right:5px;font-size:9px;color:var(--ac);font-weight:700}
+
+/* ---------- DAY TABS ---------- */
+.days{display:flex;gap:7px;margin-bottom:16px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none}
+.days::-webkit-scrollbar{display:none}
+.day{
+  padding:9px 15px;border-radius:999px;border:1px solid var(--bd2);
+  font-size:13px;font-weight:600;color:var(--mu);white-space:nowrap;flex:0 0 auto
+}
+.day.on{background:var(--ac);border-color:var(--ac);color:var(--acd)}
+
+/* ---------- BANNERS ---------- */
+.ban{
+  position:relative;border-radius:var(--r);margin-bottom:14px;
+  padding:13px 38px 13px 15px;font-size:13px;line-height:1.45
+}
+.ban .bt{font-weight:600;display:block;margin-bottom:2px}
+.ban .bx{
+  position:absolute;top:8px;right:8px;color:inherit;opacity:.5;
+  font-size:17px;line-height:1;padding:5px 8px
+}
+.ban-blue{background:rgba(96,165,250,.1);border:1px solid rgba(96,165,250,.28);color:#bcd9ff}
+.ban-green{background:rgba(74,222,128,.1);border:1px solid rgba(74,222,128,.28);color:#bff0d0}
+.ban-amber{background:rgba(251,146,60,.1);border:1px solid rgba(251,146,60,.28);color:#ffd9bb}
+.ban-act{
+  display:inline-block;margin-top:10px;background:var(--s3);border:1px solid var(--bd2);
+  color:var(--tx);font-size:12px;font-weight:600;padding:7px 13px;border-radius:8px;white-space:nowrap
+}
+
+/* ---------- SECTION ---------- */
+.sec-h{
+  font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:var(--mu2);
+  margin:20px 0 9px;display:flex;align-items:center;gap:8px
+}
+.sec-h span{margin-left:auto;text-transform:none;letter-spacing:0;font-size:11px;color:var(--mu)}
+.card{background:var(--s1);border:1px solid var(--bd);border-radius:var(--r);overflow:hidden}
+.simple{padding:13px 15px;display:flex;align-items:center;gap:12px;font-size:13.5px;border-bottom:1px solid var(--bd)}
+.simple:last-child{border-bottom:none}
+.simple .tx{flex:1;line-height:1.35}
+.simple .tx i{display:block;font-style:normal;font-size:11.5px;color:var(--mu);margin-top:2px}
+.cbx{
+  width:24px;height:24px;border-radius:7px;border:1.5px solid var(--bd2);flex:0 0 auto;
+  display:flex;align-items:center;justify-content:center
+}
+.cbx svg{width:13px;height:13px;stroke:var(--acd);fill:none;stroke-width:3;stroke-linecap:round;stroke-linejoin:round;opacity:0}
+.cbx.on{background:var(--ac);border-color:var(--ac)}
+.cbx.on svg{opacity:1}
+
+/* ---------- PROGRESS ---------- */
+.prog{margin:16px 0 4px}
+.prog-t{display:flex;justify-content:space-between;font-size:11.5px;color:var(--mu);margin-bottom:7px}
+.prog-t b{color:var(--ac);font-weight:600}
+.prog-b{height:5px;background:var(--s2);border-radius:99px;overflow:hidden}
+.prog-f{height:100%;background:var(--ac);border-radius:99px;transition:width .3s}
+
+/* ---------- EXERCISE ---------- */
+.ex{background:var(--s1);border:1px solid var(--bd);border-radius:var(--r);margin-bottom:11px;overflow:hidden}
+.ex.done{border-color:rgba(200,240,78,.28)}
+.ex-h{padding:14px 15px;display:flex;align-items:flex-start;gap:10px}
+.ex-nm{font-size:15.5px;font-weight:600;letter-spacing:-.015em;line-height:1.25}
+.ex-tg{font-size:11.5px;color:var(--mu);margin-top:3px;letter-spacing:.01em}
+.ex-tg .lv{color:var(--ac);font-weight:600}
+.ex-mn{
+  width:30px;height:30px;border-radius:8px;background:var(--s2);border:1px solid var(--bd);
+  display:flex;align-items:center;justify-content:center;flex:0 0 auto;color:var(--mu);font-size:15px;line-height:1
+}
+.ex-b{padding:0 15px 13px}
+.srow{display:flex;align-items:center;gap:7px;margin-bottom:7px}
+.srow:last-child{margin-bottom:0}
+.sn{width:15px;font-size:11px;color:var(--mu2);flex:0 0 auto;font-weight:600}
+.sin{
+  flex:1;min-width:0;background:var(--s2);border:1px solid var(--bd);border-radius:9px;
+  padding:11px 8px;text-align:center;font-size:15px;font-weight:600;
+  font-family:'DM Mono',monospace;color:var(--tx);outline:none;-moz-appearance:textfield
+}
+.sin::-webkit-outer-spin-button,.sin::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.sin:focus{border-color:var(--ac);background:var(--s3)}
+.sin::placeholder{color:var(--mu2);opacity:.75;font-weight:400}
+.sx{font-size:12px;color:var(--mu2);flex:0 0 auto}
+.su{font-size:11px;color:var(--mu2);width:20px;flex:0 0 auto}
+.sok{
+  width:34px;height:34px;border-radius:9px;background:var(--s2);border:1px solid var(--bd);
+  display:flex;align-items:center;justify-content:center;flex:0 0 auto
+}
+.sok svg{width:14px;height:14px;stroke:var(--mu2);fill:none;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+.sok.on{background:var(--ac);border-color:var(--ac)}
+.sok.on svg{stroke:var(--acd)}
+.ex-f{padding:11px 15px;border-top:1px solid var(--bd);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.lvup{
+  font-size:12px;font-weight:600;color:var(--ac);background:rgba(200,240,78,.1);
+  border:1px solid rgba(200,240,78,.3);padding:7px 12px;border-radius:9px
+}
+.felt{display:flex;gap:5px;margin-left:auto}
+.fb{font-size:11.5px;padding:7px 10px;border-radius:9px;background:var(--s2);border:1px solid var(--bd);color:var(--mu)}
+.fb.on[data-f=easy]{background:rgba(74,222,128,.15);border-color:rgba(74,222,128,.4);color:var(--gn)}
+.fb.on[data-f=ok]{background:rgba(96,165,250,.15);border-color:rgba(96,165,250,.4);color:var(--bl)}
+.fb.on[data-f=hard]{background:rgba(251,146,60,.15);border-color:rgba(251,146,60,.4);color:var(--or)}
+.ghost-note{margin:-2px 15px 11px}
+.ghost-note div{
+  background:var(--s2);border:1px solid var(--bd);border-radius:9px;
+  padding:8px 11px;font-size:11.5px;color:var(--mu);line-height:1.4
+}
+.ghost-note b{display:block;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--mu2);margin-bottom:3px;font-weight:600}
+.ghost-note .n{font-family:'DM Mono',monospace;color:var(--tx);font-size:12px}
+
+.datebar{
+  width:100%;display:flex;align-items:center;gap:10px;margin-bottom:14px;
+  background:var(--s1);border:1px solid var(--bd);border-radius:var(--r);
+  padding:13px 15px;font-size:13px;color:var(--mu);text-align:left
+}
+.datebar.past{border-color:rgba(251,146,60,.35);background:rgba(251,146,60,.07)}
+.datebar svg{width:16px;height:16px;stroke:var(--mu);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:0 0 auto}
+.datebar.past svg{stroke:var(--or)}
+.datebar b{color:var(--tx);font-weight:600}
+.datebar .ch{margin-left:auto;font-size:11.5px;font-weight:600;color:var(--ac);flex:0 0 auto}
+
+.advice{
+  margin:0 15px 13px;border-radius:9px;padding:9px 12px;font-size:12px;line-height:1.4;
+  display:flex;gap:8px;align-items:flex-start
+}
+.advice .di{flex:0 0 auto;font-weight:700;font-size:10px;letter-spacing:.09em;text-transform:uppercase}
+.advice.go{background:rgba(74,222,128,.1);border:1px solid rgba(74,222,128,.28);color:#bdf0cf}
+.advice.go .di{color:var(--gn)}
+.advice.hold{background:rgba(96,165,250,.09);border:1px solid rgba(96,165,250,.26);color:#c6dcf8}
+.advice.hold .di{color:var(--bl)}
+.advice.stop{background:rgba(251,146,60,.09);border:1px solid rgba(251,146,60,.26);color:#ffd7b6}
+.advice.stop .di{color:var(--or)}
+.lvup.hot{background:var(--ac);color:var(--acd);border-color:var(--ac)}
+
+#excard{
+  position:fixed;left:14px;right:14px;bottom:calc(var(--sab) + 80px);z-index:95;
+  background:var(--s3);border:1px solid var(--bd2);border-radius:14px;padding:13px 15px;
+  box-shadow:0 10px 36px rgba(0,0,0,.62);
+  opacity:0;transform:translateY(14px);transition:.24s cubic-bezier(.2,.9,.3,1);
+  max-width:560px;margin:0 auto;
+  /* never blocks a tap meant for the exercise underneath it */
+  pointer-events:none
+}
+#excard.show{opacity:1;transform:none}
+#excard .xc-h{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+#excard .xc-tick{width:19px;height:19px;border-radius:50%;background:var(--ac);display:flex;align-items:center;justify-content:center;flex:0 0 auto}
+#excard .xc-tick svg{width:10px;height:10px;stroke:var(--acd);fill:none;stroke-width:3.4;stroke-linecap:round;stroke-linejoin:round}
+#excard .xc-n{font-size:14px;font-weight:600;letter-spacing:-.01em;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#excard .xc-x{
+  color:var(--mu2);font-size:16px;line-height:1;flex:0 0 auto;
+  padding:6px 8px;margin:-6px -8px -6px 0;pointer-events:auto
+}
+#excard .xc-s{font-family:'DM Mono',monospace;font-size:12.5px;color:var(--tx)}
+#excard .xc-m{font-size:11.5px;color:var(--mu);margin-top:4px}
+#excard .xc-m b{font-weight:600}
+
+.ex-hist{
+  width:100%;padding:10px 15px;border-top:1px solid var(--bd);
+  display:flex;align-items:center;gap:8px;font-size:11.5px;color:var(--mu);text-align:left
+}
+.ex-hist svg{width:13px;height:13px;stroke:var(--mu2);fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;flex:0 0 auto}
+.ex-hist .ar{margin-left:auto;color:var(--mu2);font-size:14px;line-height:1}
+.hrow{
+  display:flex;gap:11px;align-items:flex-start;padding:11px 0;border-bottom:1px solid var(--bd)
+}
+.hrow:last-child{border-bottom:none}
+.hrow .hd{width:52px;flex:0 0 auto;font-size:10.5px;color:var(--mu);line-height:1.35}
+.hrow .hd b{display:block;color:var(--tx);font-size:12px;font-weight:600}
+.hrow .hs2{flex:1;min-width:0;font-family:'DM Mono',monospace;font-size:12px;line-height:1.5;word-break:break-word}
+.hrow .hl{font-size:9px;font-weight:700;color:var(--ac);background:rgba(200,240,78,.1);padding:2px 6px;border-radius:5px;flex:0 0 auto}
+
+.addex{
+  width:100%;padding:14px;border:1px dashed var(--bd2);border-radius:var(--r);
+  color:var(--mu);font-size:13.5px;font-weight:500;margin-top:3px
+}
+.finbtn{margin-top:18px}
+
+/* ---------- WEIGHT ---------- */
+.wt-hero{background:var(--s1);border:1px solid var(--bd);border-radius:var(--r);padding:18px;margin-bottom:14px}
+.wt-big{font-size:42px;font-weight:700;letter-spacing:-.035em;line-height:1}
+.wt-big small{font-size:17px;color:var(--mu);font-weight:500;margin-left:3px}
+.wt-meta{display:flex;gap:14px;margin-top:11px;font-size:12px;color:var(--mu);flex-wrap:wrap}
+.wt-meta b{font-weight:600}
+.up{color:var(--or)}.dn{color:var(--gn)}
+.chart{margin-top:16px;width:100%;height:auto;display:block;overflow:visible}
+.wt-in{display:flex;gap:8px;margin-bottom:14px}
+.wt-in input{
+  flex:1;background:var(--s1);border:1px solid var(--bd);border-radius:var(--r2);
+  padding:13px 14px;font-size:15px;font-family:'DM Mono',monospace;outline:none
+}
+.wt-in input:focus{border-color:var(--ac)}
+.wt-in button{background:var(--ac);color:var(--acd);font-weight:700;padding:0 20px;border-radius:var(--r2);font-size:14px}
+.wrow{padding:12px 15px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--bd);font-size:13.5px}
+.wrow:last-child{border-bottom:none}
+.wrow .d{color:var(--mu);font-size:12px;flex:1}
+.wrow .v{font-weight:600;font-family:'DM Mono',monospace}
+.wrow .dl{font-size:11px;width:52px;text-align:right}
+.wrow .del{color:var(--mu2);font-size:16px;padding:0 2px;line-height:1}
+
+/* ---------- HISTORY ---------- */
+.hs{background:var(--s1);border:1px solid var(--bd);border-radius:var(--r);margin-bottom:9px;overflow:hidden}
+.hs-h{padding:13px 15px;display:flex;align-items:center;gap:11px}
+.hs-dot{width:8px;height:8px;border-radius:50%;background:var(--ac);flex:0 0 auto}
+.hs-t{flex:1;min-width:0}
+.hs-t b{font-size:14px;font-weight:600;display:block;letter-spacing:-.01em}
+.hs-t i{font-style:normal;font-size:11.5px;color:var(--mu);display:block;margin-top:1px}
+.hs-b{padding:0 15px 13px;border-top:1px solid var(--bd);display:none}
+.hs.open .hs-b{display:block}
+.hs-e{padding:9px 0;border-bottom:1px solid var(--bd);font-size:12.5px}
+.hs-e:last-child{border-bottom:none}
+.hs-e b{font-weight:600;display:block;margin-bottom:2px}
+.hs-e .s{color:var(--mu);font-family:'DM Mono',monospace;font-size:11.5px}
+.pill{font-size:9px;font-weight:700;letter-spacing:.07em;padding:2px 6px;border-radius:5px;margin-left:6px;vertical-align:1px}
+.pill.easy{background:rgba(74,222,128,.16);color:var(--gn)}
+.pill.ok{background:rgba(96,165,250,.16);color:var(--bl)}
+.pill.hard{background:rgba(251,146,60,.16);color:var(--or)}
+.wkhdr{font-size:11px;letter-spacing:.11em;text-transform:uppercase;color:var(--mu2);margin:18px 0 9px;display:flex;gap:8px;align-items:center}
+.wkhdr:before{content:'';flex:1;height:1px;background:var(--bd);order:2}
+.acts{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:6px}
+.act{background:var(--s1);border:1px solid var(--bd);border-radius:var(--r2);padding:13px;font-size:13px;font-weight:600;text-align:center}
+.empty{text-align:center;padding:44px 20px;color:var(--mu2);font-size:13.5px}
+.empty svg{width:34px;height:34px;stroke:var(--mu2);fill:none;stroke-width:1.5;margin-bottom:12px;opacity:.6}
+
+/* ---------- BOTTOM BAR + TIMER ---------- */
+.bbar{
+  position:fixed;left:0;right:0;bottom:0;z-index:90;display:none;gap:10px;align-items:center;
+  padding:10px 14px calc(var(--sab) + 10px);
+  background:rgba(10,10,10,.94);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+  border-top:1px solid var(--bd)
+}
+.bbar.show{display:flex}
+#timer{
+  width:108px;flex:0 0 auto;height:48px;border-radius:12px;
+  background:var(--s3);border:1px solid var(--bd2);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  position:relative;overflow:hidden
+}
+#timer .tfill{position:absolute;left:0;top:0;bottom:0;width:0;background:var(--ac);transition:width .95s linear}
+#timer .tv,#timer .tl{position:relative;z-index:1}
+.tv{font-family:'DM Mono',monospace;font-size:16px;font-weight:600;letter-spacing:-.02em;line-height:1.1}
+.tl{font-size:8px;letter-spacing:.13em;color:var(--mu);text-transform:uppercase;margin-top:2px}
+#timer.run .tv,#timer.run .tl{color:var(--acd);mix-blend-mode:normal}
+#timer.run .tl{color:rgba(0,0,0,.6)}
+#timer.done{background:var(--gn);border-color:var(--gn)}
+#timer.done .tfill{width:100%!important;background:var(--gn)}
+#timer.done .tv{color:#06220f}
+#timer.done .tl{color:rgba(0,0,0,.6)}
+.fbtn{
+  flex:1;height:48px;border-radius:12px;background:var(--ac);color:var(--acd);
+  font-weight:700;font-size:15px;letter-spacing:-.01em
+}
+.fbtn:active{transform:scale(.99)}
+
+/* ---------- MODAL ---------- */
+#mask{
+  position:fixed;inset:0;z-index:150;background:rgba(0,0,0,.72);
+  backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
+  display:none;align-items:flex-end;justify-content:center
+}
+#mask.show{display:flex}
+.md{
+  background:var(--s1);border:1px solid var(--bd2);border-radius:20px 20px 0 0;
+  width:100%;max-width:520px;max-height:92vh;overflow-y:auto;
+  padding:20px 18px calc(var(--sab) + 20px);
+  animation:up .22s cubic-bezier(.2,.9,.3,1)
+}
+@keyframes up{from{transform:translateY(24px);opacity:0}to{transform:none;opacity:1}}
+.md-g{width:34px;height:4px;background:var(--bd2);border-radius:9px;margin:-6px auto 15px}
+.md-t{font-size:19px;font-weight:700;letter-spacing:-.025em}
+.md-s{font-size:13px;color:var(--mu);margin-top:3px;line-height:1.45}
+.rule{
+  background:rgba(96,165,250,.09);border:1px solid rgba(96,165,250,.26);
+  border-radius:var(--r2);padding:13px 14px;margin:15px 0;font-size:13px;line-height:1.5;color:#c9def9
+}
+.rule b{display:block;color:var(--bl);font-weight:700;margin-bottom:4px;font-size:11px;letter-spacing:.09em;text-transform:uppercase}
+.rule .cmp{font-family:'DM Mono',monospace;font-size:12px;margin-top:9px;color:var(--mu)}
+.rule .cmp em{font-style:normal;color:var(--bl);font-weight:500}
+.md-lb{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--mu2);margin:15px 0 8px}
+.md-btns{display:flex;gap:9px;margin-top:20px}
+.md-btns button{flex:1;padding:14px;border-radius:var(--r2);font-weight:600;font-size:14.5px}
+.b-go{background:var(--ac);color:var(--acd);font-weight:700}
+.b-no{background:var(--s3);border:1px solid var(--bd);color:var(--tx)}
+.b-rd{background:rgba(248,113,113,.14);border:1px solid rgba(248,113,113,.32);color:var(--rd)}
+.fld{margin-bottom:12px}
+.fld label{display:block;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--mu2);margin-bottom:6px}
+.fld input,.fld select{
+  width:100%;background:var(--s2);border:1px solid var(--bd);border-radius:var(--r2);
+  padding:13px 14px;font-size:15px;outline:none
+}
+.fld input:focus,.fld select:focus{border-color:var(--ac)}
+.tog{display:flex;align-items:center;gap:12px;padding:13px 0;border-bottom:1px solid var(--bd)}
+.tog .tt{flex:1;font-size:14px}
+.tog .tt i{display:block;font-style:normal;font-size:11.5px;color:var(--mu);margin-top:2px}
+.sw{width:44px;height:26px;border-radius:99px;background:var(--s3);border:1px solid var(--bd);position:relative;flex:0 0 auto}
+.sw:after{content:'';position:absolute;top:2px;left:2px;width:20px;height:20px;border-radius:50%;background:var(--mu);transition:.18s}
+.sw.on{background:var(--ac);border-color:var(--ac)}
+.sw.on:after{left:20px;background:var(--acd)}
+.mlist button{
+  width:100%;text-align:left;padding:14px 4px;border-bottom:1px solid var(--bd);
+  font-size:14.5px;display:flex;align-items:center;gap:11px
+}
+.mlist button:last-child{border-bottom:none}
+.mlist button.rd{color:var(--rd)}
+.mlist .mi{width:20px;text-align:center;opacity:.65;font-size:14px}
+
+/* ---------- COMPLETE OVERLAY ---------- */
+#done{position:fixed;inset:0;z-index:170;background:var(--bg);display:none;flex-direction:column;align-items:center;justify-content:center;padding:30px;text-align:center}
+#done.show{display:flex}
+.dn-ic{width:78px;height:78px;border-radius:50%;background:var(--ac);display:flex;align-items:center;justify-content:center;margin-bottom:22px;animation:pop .35s cubic-bezier(.2,1.3,.4,1)}
+@keyframes pop{from{transform:scale(.4);opacity:0}to{transform:none;opacity:1}}
+.dn-ic svg{width:36px;height:36px;stroke:var(--acd);fill:none;stroke-width:3.5;stroke-linecap:round;stroke-linejoin:round}
+.dn-h{font-size:29px;font-weight:700;letter-spacing:-.03em}
+.dn-s{color:var(--mu);margin-top:8px;font-size:14.5px;max-width:300px}
+.dn-st{display:flex;gap:10px;margin-top:26px}
+.dn-st div{background:var(--s1);border:1px solid var(--bd);border-radius:var(--r2);padding:13px 17px;min-width:82px}
+.dn-st b{display:block;font-size:21px;font-weight:700}
+.dn-st i{font-style:normal;font-size:10px;color:var(--mu);text-transform:uppercase;letter-spacing:.09em}
+#done .btn-primary{max-width:280px;margin-top:30px}
+
+/* ---------- TOAST ---------- */
+#toast{
+  position:fixed;left:50%;transform:translateX(-50%) translateY(-14px);
+  bottom:calc(var(--sab) + 92px);z-index:190;
+  background:var(--s3);border:1px solid var(--bd2);border-radius:11px;
+  padding:11px 17px;font-size:13px;font-weight:500;
+  opacity:0;pointer-events:none;transition:.22s;max-width:88vw;text-align:center
+}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+@media(min-width:620px){
+  .wrap,.hdr{max-width:620px;margin-left:auto;margin-right:auto}
+  #mask{align-items:center}
+  .md{border-radius:20px;padding-bottom:20px}
+}
+@media print{body{background:#fff;color:#000}#app,#landing,#bbar,#mask,#toast{display:none!important}}
+</style>
+</head>
+<body>
+
+<!-- ===== LANDING ===== -->
+<div id="landing">
+  <div class="lnd-glow"></div>
+  <div class="lnd-core">
+    <div class="lnd-mark">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#0a0a0a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M6.5 6.5v11M17.5 6.5v11M3 9.5v5M21 9.5v5M6.5 12h11"/>
+      </svg>
+    </div>
+    <h1 class="lnd-h">Forge<span>.</span></h1>
+  </div>
+  <button class="btn-primary" id="btnStart">Start</button>
+</div>
+
+<!-- ===== APP ===== -->
+<div id="app">
+  <div class="hdr">
+    <div class="hdr-row">
+      <div class="hdr-t">Forge<small id="hdrDate"></small></div>
+      <button class="chip ac" id="wkChip">W1</button>
+      <button class="icb" id="btnSet" aria-label="Settings">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      </button>
+    </div>
+    <div class="tabs">
+      <button class="tab on" data-v="workout">Workout</button>
+      <button class="tab" data-v="weight">Weight</button>
+      <button class="tab" data-v="history">History</button>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <div class="view on" id="v-workout"></div>
+    <div class="view" id="v-weight"></div>
+    <div class="view" id="v-history"></div>
+  </div>
+</div>
+
+<!-- ===== BOTTOM BAR ===== -->
+<div class="bbar" id="bbar">
+  <button id="timer">
+    <span class="tfill" id="tFill"></span>
+    <span class="tv" id="tVal">2:00</span>
+    <span class="tl" id="tLab">Rest</span>
+  </button>
+  <button class="fbtn" id="finSession">Finish session</button>
+</div>
+
+<!-- ===== MODAL ===== -->
+<div id="mask"><div class="md" id="md"></div></div>
+
+<!-- ===== DONE ===== -->
+<div id="done">
+  <div class="dn-ic"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></div>
+  <div class="dn-h" id="dnH">Session logged</div>
+  <div class="dn-s" id="dnS"></div>
+  <div class="dn-st" id="dnSt"></div>
+  <button class="btn-primary" id="dnBtn">Done</button>
+</div>
+
+<!-- ===== EXERCISE DONE CARD ===== -->
+<div id="excard"></div>
+
+<div id="toast"></div>
+
+<script>
+'use strict';
+/* =========================================================
+   FORGE — manual-entry progressive overload tracker
+   ========================================================= */
+
+const KEY = 'forge_v1';
+const DAYS = [
+  {k:'push',      n:'Push'},
+  {k:'pull',      n:'Pull'},
+  {k:'legs',      n:'Legs'},
+  {k:'shoulders', n:'Shoulders'}
+];
+const DAYN = {push:'Push',pull:'Pull',legs:'Legs',shoulders:'Shoulders'};
+
+const SEED = {
+  push:      ['DB Chest press','DB Incline press',"Flat DB Fly's",'Bench dips','Seated DB Tricep overhead ext.','Cable tricep push down','Cable tricep overhead ext.'],
+  pull:      ['Lateral pulldown','Close grip pulldown','Leaned over BB rows','BB curl','Preacher curl','Hammer curls'],
+  legs:      ['45° Leg press','Thigh extensions','Lying leg curl','Adductions','Walking lunges','Calve raises'],
+  shoulders: ['Seated shoulder press','Lateral raises','FR Plate lift','Upright rows (BB)','Machine straight press',"Chest supported reverse fly's",'Bench lateral raise']
+};
+const BW_DEFAULT = ['Bench dips'];
+
+const CORE = {
+  push:      ['Crunch to knee x10','Crunch to ankle x10','Side to side x10 p.s'],
+  pull:      ['Weighted russian twists x15 p.s','BOSU ball sit-ups x12','Plank oblique crunch x10 p.s'],
+  legs:      ['Lying leg raises x15','Flutter kicks x20 p.s'],
+  shoulders: ['Standing weighted oblique crunch x10 p.s (KB)']
+};
+const CORE_ROUNDS = {push:'3 rounds',pull:'3 rounds',legs:'3 rounds',shoulders:'3 rounds'};
+
+/* ---------- utils ---------- */
+let _uidc = 0;
+function uid(){ _uidc++; return 'e' + Date.now().toString(36) + _uidc.toString(36) + Math.random().toString(36).slice(2,6); }
+function todayISO(d){ const x = d?new Date(d):new Date(); return x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0'); }
+function parseISO(s){ const p=String(s).split('-'); return new Date(+p[0],+p[1]-1,+p[2]); }
+function daysBetween(a,b){ return Math.round((parseISO(b)-parseISO(a))/86400000); }
+function fmtDate(iso){
+  const d=parseISO(iso);
+  return d.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});
+}
+function fmtDateShort(iso){
+  const d=parseISO(iso);
+  return d.toLocaleDateString('en-GB',{day:'numeric',month:'short'});
+}
+function fmtDateLong(iso){
+  const d=parseISO(iso);
+  return d.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'});
+}
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function num(v){ if(v===''||v==null) return null; const n=Number(v); return Number.isFinite(n)?n:null; }
+function clone(o){ return JSON.parse(JSON.stringify(o)); }
+
+function toast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  clearTimeout(toast._t); toast._t=setTimeout(()=>t.classList.remove('show'),2100);
+}
+
+/* ---------- state ---------- */
+let S = null;
+let curDay = 'push';
+let curView = 'workout';
+
+function mkEx(name, opts){
+  opts = opts||{};
+  const reps = opts.reps || [10,8,6,6];
+  return {
+    id: uid(),
+    name: name,
+    bw: !!opts.bw,
+    level: 1,
+    phase: 'low',
+    backoff: reps.length>=2 && reps[reps.length-1]===reps[reps.length-2],
+    target: reps.map(r=>({reps:r, weight:null})),
+    last: null,
+    lastDate: null,
+    confirmed: false
+  };
+}
+
+function freshState(){
+  const st = {
+    v: 1,
+    created: todayISO(),
+    week: { number:1, start: todayISO(), done:{push:0,pull:0,legs:0,shoulders:0} },
+    days: {},
+    history: [],
+    weeks: [],
+    weights: [],
+    drafts: {},
+    lastBackup: null,
+    settings: { rest:120, weighDay:3, autoTimer:true, sound:true },
+    flags: {}
+  };
+  DAYS.forEach(d=>{
+    st.days[d.k] = SEED[d.k].map(n=>mkEx(n, BW_DEFAULT.indexOf(n)>=0?{bw:true,reps:[10,10,10]}:{}));
+  });
+  return st;
+}
+
+function save(){
+  try{ localStorage.setItem(KEY, JSON.stringify(S)); }
+  catch(e){ console.warn('save failed', e); }
+}
+function load(){
+  try{
+    const raw = localStorage.getItem(KEY);
+    if(!raw) return null;
+    const o = JSON.parse(raw);
+    if(!o || !o.days) return null;
+    return migrate(o);
+  }catch(e){ console.warn('load failed', e); return null; }
+}
+function migrate(o){
+  o.v = o.v || 1;
+  o.settings = Object.assign({rest:120,weighDay:3,autoTimer:true,sound:true}, o.settings||{});
+  o.week = o.week || {number:1,start:todayISO(),done:{}};
+  o.week.done = Object.assign({push:0,pull:0,legs:0,shoulders:0}, o.week.done||{});
+  o.history = o.history||[]; o.weights = o.weights||[]; o.weeks = o.weeks||[];
+  o.drafts = o.drafts||{}; o.flags = o.flags||{};
+  if(o.lastBackup===undefined) o.lastBackup = null;
+  DAYS.forEach(d=>{
+    if(!Array.isArray(o.days[d.k])) o.days[d.k]=[];
+    o.days[d.k].forEach(ex=>{
+      if(!ex.id) ex.id = uid();
+      ex.level = ex.level||1;
+      ex.phase = ex.phase||'low';
+      if(!Array.isArray(ex.target)||!ex.target.length) ex.target=[{reps:10,weight:null},{reps:8,weight:null},{reps:6,weight:null},{reps:6,weight:null}];
+      ex.target = ex.target.map(s=>({reps:num(s.reps)||0, weight: s.weight==null?null:num(s.weight)}));
+      if(typeof ex.backoff!=='boolean'){
+        const t=ex.target; ex.backoff = t.length>=2 && t[t.length-1].reps===t[t.length-2].reps;
+      }
+      ex.bw = !!ex.bw;
+      ex.confirmed = !!ex.confirmed;
+      if(ex.last && !Array.isArray(ex.last)) ex.last=null;
+    });
+  });
+  return o;
+}
+
+/* ---------- progression engine ---------- */
+function suggestNext(ex){
+  const t = ex.target.map(s=>({reps:s.reps, weight:s.weight}));
+  const n = t.length;
+  if(ex.phase === 'low'){
+    const sets = t.map((s,i)=>({
+      reps: (ex.backoff && i===n-1) ? s.reps : s.reps + 2,
+      weight: s.weight
+    }));
+    return { sets:sets, phase:'high', kind:'reps' };
+  }
+  const reps = t.map((s,i)=>({
+    reps: (ex.backoff && i===n-1) ? s.reps : Math.max(1, s.reps - 2)
+  }));
+  let w;
+  if(ex.bw){
+    w = t.map(s=>s.weight);
+  }else{
+    const ws = t.map(s=>s.weight);
+    const allNull = ws.every(x=>x==null);
+    if(allNull){ w = ws.slice(); }
+    else{
+      w = ws.slice(1);
+      const lastW = ws[n-1], prevW = ws[n-2];
+      let top = null;
+      if(lastW!=null && prevW!=null){
+        const step = lastW - prevW;
+        top = step>0 ? +(lastW + step).toFixed(2) : +(lastW + (lastW*0.05)).toFixed(1);
+      }else if(lastW!=null){ top = lastW; }
+      w.push(top);
+    }
+  }
+  return { sets: reps.map((r,i)=>({reps:r.reps, weight: w[i]===undefined?null:w[i]})), phase:'low', kind:'weight' };
+}
+
+function fmtSets(sets, bw){
+  if(!sets || !sets.length) return '—';
+  if(!bw && sets.every(s=>s.weight==null)){
+    return sets.map(s=>s.reps==null?'?':s.reps).join(' · ') + ' reps';
+  }
+  return sets.map(s=>{
+    const r = s.reps==null?'?':s.reps;
+    if(bw) return r+'×BW';
+    return r+'×'+(s.weight==null?'?':trimNum(s.weight))+'kg';
+  }).join('  ');
+}
+function trimNum(n){ if(n==null) return ''; const r=Math.round(n*100)/100; return String(r); }
+
+/* ---------- drafts ---------- */
+function getDraft(day){
+  if(!S.drafts[day]) S.drafts[day] = { sets:{}, felt:{}, extra:{}, started:null };
+  const d = S.drafts[day];
+  d.sets = d.sets||{}; d.felt=d.felt||{}; d.extra=d.extra||{};
+  return d;
+}
+function draftRows(day, ex){
+  const d = getDraft(day);
+  if(!d.sets[ex.id] || d.sets[ex.id].length !== ex.target.length){
+    const old = d.sets[ex.id]||[];
+    d.sets[ex.id] = ex.target.map((t,i)=> old[i] ? old[i] : {reps:'',weight:'',done:false});
+  }
+  return d.sets[ex.id];
+}
+/* The placeholder is what you are meant to hit today: the level target when it
+   is fully specified, otherwise whatever you did last time. After a level up
+   this means the new numbers guide you, while the box above still shows what
+   you actually did last session. */
+function ghostFor(ex, i){
+  const tgt = ex.target[i] || null;
+  const tgtReady = tgt && tgt.reps!=null && (ex.bw || tgt.weight!=null);
+  const src = tgtReady ? tgt : ((ex.last && ex.last[i]) ? ex.last[i] : tgt);
+  if(!src) return {reps:'',weight:''};
+  return { reps: src.reps==null?'':String(src.reps), weight: src.weight==null?'':trimNum(src.weight) };
+}
+/* The date a session is being logged FOR. Defaults to today and stays there
+   unless you pick another one, so a stale draft never back-dates by accident. */
+function draftDate(day){
+  const d = getDraft(day);
+  if(d.dateLocked && d.date) return d.date;
+  d.date = todayISO();
+  return d.date;
+}
+function setDraftDate(day, iso){
+  const d = getDraft(day);
+  d.date = iso; d.dateLocked = (iso !== todayISO());
+  save();
+}
+/* Which training week a given date belongs to, so a back-dated session lands
+   in the right week rather than always the current one. */
+function weekForDate(iso){
+  for(const w of (S.weeks||[])){
+    if(w.start && w.end && iso>=w.start && iso<=w.end) return w.number;
+  }
+  return S.week.number;
+}
+function lastLoggedDate(){
+  let best = null;
+  S.history.forEach(s=>{ if(!best || s.date>best) best = s.date; });
+  return best;
+}
+
+function exComplete(day, ex){
+  const rows = draftRows(day, ex);
+  return rows.every(r=> num(r.reps)!=null && (ex.bw || num(r.weight)!=null) );
+}
+function anyEntered(day){
+  const d = getDraft(day);
+  let any=false;
+  Object.keys(d.sets).forEach(id=>{
+    (d.sets[id]||[]).forEach(r=>{ if(String(r.reps)!=='' || String(r.weight)!=='') any=true; });
+  });
+  if(Object.keys(d.extra).some(k=>d.extra[k])) any=true;
+  return any;
+}
+
+/* =========================================================
+   RENDER
+   ========================================================= */
+function render(){
+  renderHeader();
+  if(curView==='workout') renderWorkout();
+  if(curView==='weight')  renderWeight();
+  if(curView==='history') renderHistory();
+  renderTimerVisibility();
+}
+
+function renderHeader(){
+  document.getElementById('hdrDate').textContent = fmtDateLong(todayISO());
+  document.getElementById('wkChip').textContent = 'Week ' + S.week.number;
+}
+
+/* ---------- week strip ---------- */
+function nextDay(){
+  for(const d of DAYS){ if(!S.week.done[d.k]) return d.k; }
+  return null;
+}
+function weekStripHTML(){
+  const nd = nextDay();
+  const dayCount = daysBetween(S.week.start, todayISO());
+  const sessions = DAYS.reduce((a,d)=>a+(S.week.done[d.k]||0),0);
+  const cells = DAYS.map(d=>{
+    const c = S.week.done[d.k]||0;
+    const cls = c>0 ? 'done' : (d.k===nd ? 'next' : '');
+    return '<button class="wk-cell '+cls+'" data-wkday="'+d.k+'">'+
+      (c>1?'<span class="cnt">'+c+'</span>':'')+
+      '<div class="lab">'+d.n+'</div>'+
+      '<div class="ic"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></div>'+
+    '</button>';
+  }).join('');
+  return '<div class="wk">'+
+    '<div class="wk-top">'+
+      '<div class="wk-n">Week <b>'+S.week.number+'</b></div>'+
+      '<div class="wk-d">'+sessions+'/4 done · day '+(dayCount+1)+'</div>'+
+      '<button class="wk-fin" id="wkFin">Finish week</button>'+
+    '</div>'+
+    '<div class="wk-grid">'+cells+'</div>'+
+  '</div>';
+}
+
+/* ---------- stall detection ---------- */
+/* How many of the most recent sessions were logged at the level this exercise
+   is on now. Progressive overload fails quietly: not a bad session, but weeks
+   at the same weight where nothing ever felt wrong enough to change it. */
+const STALL_AT = 4;
+function levelRun(ex){
+  const h = exHistory(ex.id);
+  let n = 0;
+  for(let i=0;i<h.length;i++){
+    if(h[i].level === ex.level) n++; else break;
+  }
+  return n;
+}
+function stalledList(){
+  const out = [];
+  DAYS.forEach(d=>{
+    (S.days[d.k]||[]).forEach(ex=>{
+      const n = levelRun(ex);
+      if(n >= STALL_AT) out.push({ex:ex, day:d.k, n:n});
+    });
+  });
+  return out.sort((a,b)=> b.n - a.n);
+}
+
+/* ---------- backup health ---------- */
+function backupDue(){
+  const total = S.history.length;
+  if(total < 5) return null;
+  const lb = S.lastBackup;
+  const since = total - (lb ? lb.count : 0);
+  const days  = lb ? daysBetween(lb.date, todayISO()) : null;
+  if(S.flags['bk_'+total]==='x') return null;
+  if(!lb) return {since:total, days:null, never:true};
+  if(since >= 5 || days >= 14) return {since:since, days:days, never:false};
+  return null;
+}
+
+/* ---------- banners ---------- */
+/* null when nothing looks missed, otherwise the gap and the last logged date */
+function missedLogInfo(){
+  const t = todayISO();
+  if(S.flags['miss_'+t]==='x') return null;
+  const sessThisWeek = DAYS.reduce((a,d)=>a+(S.week.done[d.k]||0),0);
+  if(sessThisWeek>=4) return null;
+  const last = lastLoggedDate();
+  const gap = last ? daysBetween(last, t) : daysBetween(S.week.start, t);
+  if(gap < 2) return null;
+  return {gap:gap, last:last};
+}
+
+/* Every banner the app might want to show, as {p, html} where p is priority.
+   Only the top two ever render, so the top of the screen can never turn into
+   a wall of notices that pushes the actual workout out of view. */
+function bannerQueue(includeDay){
+  const q = [];
+  const t = todayISO();
+
+  // 1 — forgot to log
+  const miss = missedLogInfo();
+  if(miss) q.push({p:1, html:'<div class="ban ban-amber" data-ban="miss">'+
+    '<span class="bt">Nothing logged in '+miss.gap+' days</span>'+
+    (miss.last ? 'Your last session was '+fmtDate(miss.last)+'. If you trained since then and forgot, log it against that day.'
+               : 'If you have already trained this week, log it against the right day.')+
+    '<br><button class="ban-act" data-act="pickdate">Pick a day</button>'+
+    '<button class="bx" data-dismiss="miss_'+t+'">&times;</button></div>'});
+
+  // 2 — first session on this day
+  if(includeDay){
+    const list = S.days[curDay]||[];
+    if(!S.history.some(s=>s.day===curDay)){
+      q.push({p:2, html:'<div class="ban ban-blue">'+
+        '<span class="bt">First '+DAYN[curDay].toLowerCase()+' session</span>'+
+        'Whatever you enter today becomes your baseline — Level 1 for every '+DAYN[curDay].toLowerCase()+' exercise.'+
+      '</div>'});
+    }
+  }
+
+  // 3 — weigh-in day
+  const wd = new Date().getDay();
+  if(wd===S.settings.weighDay && !S.weights.some(w=>w.date===t) && S.flags['weigh_'+t]!=='x'){
+    q.push({p:3, html:'<div class="ban ban-blue" data-ban="weigh">'+
+      '<span class="bt">Weigh-in day</span>First thing, before eating.'+
+      '<br><button class="ban-act" data-act="goweigh">Log it</button>'+
+      '<button class="bx" data-dismiss="weigh_'+t+'">&times;</button></div>'});
+  }
+
+  // 4 — back up your data
+  const bk = backupDue();
+  if(bk) q.push({p:4, html:'<div class="ban ban-amber" data-ban="bk">'+
+    '<span class="bt">'+(bk.never?'You have never backed up':'Back up your training')+'</span>'+
+    (bk.never
+      ? S.history.length+' sessions live only in this browser. Clear its data or change phone and they are gone.'
+      : bk.since+' sessions since your last backup'+(bk.days!=null?' ('+bk.days+' days)':'')+'. One tap keeps them safe.')+
+    '<br><button class="ban-act" data-act="dobackup">Back up now</button>'+
+    '<button class="bx" data-dismiss="bk_'+S.history.length+'">&times;</button></div>'});
+
+  // 5 — stalled exercises
+  const stalled = stalledList();
+  if(stalled.length && S.flags['st_'+S.week.number]!=='x'){
+    q.push({p:5, html:'<div class="ban ban-amber" data-ban="stall">'+
+      '<span class="bt">'+(stalled.length===1?'One exercise has not moved':stalled.length+' exercises have not moved')+'</span>'+
+      (stalled.length===1
+        ? esc(stalled[0].ex.name)+' has been on level '+stalled[0].ex.level+' for '+stalled[0].n+' sessions.'
+        : 'Each has sat on the same level for '+STALL_AT+' sessions or more. That is where overload quietly stops.')+
+      '<br><button class="ban-act" data-act="showstall">Show me</button>'+
+      '<button class="bx" data-dismiss="st_'+S.week.number+'">&times;</button></div>'});
+  }
+
+  // 6 — close the week
+  const elapsed = daysBetween(S.week.start, t);
+  const sessions = DAYS.reduce((a,d)=>a+(S.week.done[d.k]||0),0);
+  if((elapsed>=7 || sessions>=4) && S.flags['wk_'+S.week.number]!=='x'){
+    q.push({p:6, html:'<div class="ban ban-green" data-ban="wk">'+
+      '<span class="bt">Week '+S.week.number+' looks complete</span>'+sessions+' sessions logged over '+(elapsed+1)+' days.'+
+      '<br><button class="ban-act" data-act="finweek">Close week</button>'+
+      '<button class="bx" data-dismiss="wk_'+S.week.number+'">&times;</button></div>'});
+  }
+
+  // 7 — how levelling up works
+  if(includeDay && S.history.some(s=>s.day===curDay) && S.flags['adv_'+S.week.number+'_'+curDay]!=='x'){
+    q.push({p:7, html:'<div class="ban ban-blue">'+
+      '<span class="bt">Levelling up</span>'+
+      'Tap <b>Level up</b> on any exercise. It is either more reps at the same weight, '+
+      'or back to your lower reps at a heavier weight — never both at once.'+
+      '<button class="bx" data-dismiss="adv_'+S.week.number+'_'+curDay+'">&times;</button></div>'});
+  }
+
+  return q.sort((a,b)=>a.p-b.p);
+}
+function bannersHTML(includeDay, limit){
+  return bannerQueue(includeDay).slice(0, limit||2).map(x=>x.html).join('');
+}
+
+/* ---------- workout view ---------- */
+function renderWorkout(){
+  const list = S.days[curDay] || [];
+  const d = getDraft(curDay);
+  const doneCount = list.filter(ex=>exComplete(curDay,ex)).length;
+  const pct = list.length ? Math.round(doneCount/list.length*100) : 0;
+  const loggedThisWeek = S.week.done[curDay]||0;
+
+  let h = '';
+  h += weekStripHTML();
+
+  h += '<div class="days">' + DAYS.map(x=>
+        '<button class="day'+(x.k===curDay?' on':'')+'" data-day="'+x.k+'">'+x.n+'</button>'
+      ).join('') + '</div>';
+
+  h += bannersHTML(true, 2);
+
+  // Baseline notice: this day still has exercises with no level set, so today's
+  // numbers are what will define Level 1 for them.
+  if(loggedThisWeek>0){
+    const lastS = [...S.history].reverse().find(s=>s.day===curDay && s.week===S.week.number);
+    h += '<div class="ban ban-amber">'+
+      '<span class="bt">'+DAYN[curDay]+' already logged this week</span>'+
+      (lastS?fmtDate(lastS.date):'')+' · you can log another, it will be added on top.'+
+    '</div>';
+  }
+
+  // which day this session is being logged for
+  const dDate = draftDate(curDay);
+  const isPast = dDate !== todayISO();
+  h += '<button class="datebar'+(isPast?' past':'')+'" id="dateBar">'+
+    '<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg>'+
+    '<span>Logging for <b>'+esc(isPast?fmtDate(dDate):'today')+'</b>'+(isPast?' · back-dated':'')+'</span>'+
+    '<span class="ch">Change</span>'+
+  '</button>';
+
+  // warm up
+  h += '<div class="sec-h">Warm-up</div><div class="card">'+
+    simpleRow(curDay,'warmup','10 min cardio (CV of choice)','Then mobility work')+
+  '</div>';
+
+  // exercises
+  h += '<div class="prog"><div class="prog-t"><span>'+doneCount+' of '+list.length+' exercises</span><b>'+pct+'%</b></div>'+
+       '<div class="prog-b"><div class="prog-f" style="width:'+pct+'%"></div></div></div>';
+  h += '<div class="sec-h">Exercises <span>tap ✓ on a set to start rest</span></div>';
+
+  if(!list.length){
+    h += '<div class="empty"><svg viewBox="0 0 24 24"><path d="M6.5 6.5v11M17.5 6.5v11M3 9.5v5M21 9.5v5M6.5 12h11"/></svg><div>No exercises for '+DAYN[curDay]+' yet.</div></div>';
+  }
+  list.forEach(ex=> h += exHTML(ex));
+  h += '<button class="addex" id="addEx">+ Add exercise to '+DAYN[curDay]+'</button>';
+
+  // core
+  h += '<div class="sec-h">Core &amp; abs <span>'+CORE_ROUNDS[curDay]+'</span></div><div class="card">'+
+    simpleRow(curDay,'core', CORE[curDay].join(' · '), CORE_ROUNDS[curDay])+
+  '</div>';
+
+  // cool down
+  h += '<div class="sec-h">Cool-down</div><div class="card">'+
+    simpleRow(curDay,'cool','10 min cardio cool down','Then stretch')+
+  '</div>';
+
+  document.getElementById('v-workout').innerHTML = h;
+}
+
+function simpleRow(day,key,txt,sub){
+  const on = !!getDraft(day).extra[key];
+  return '<div class="simple" data-extra="'+key+'">'+
+    '<div class="cbx'+(on?' on':'')+'"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></div>'+
+    '<div class="tx">'+esc(txt)+(sub?'<i>'+esc(sub)+'</i>':'')+'</div>'+
+  '</div>';
+}
+
+function exHTML(ex){
+  const rows = draftRows(curDay, ex);
+  const complete = exComplete(curDay, ex);
+  const felt = getDraft(curDay).felt[ex.id];
+  const past = exHistory(ex.id).length;
+  const adv = feltAdvice(ex);
+  const sameAsLast = !!ex.last && JSON.stringify(ex.last)===JSON.stringify(ex.target);
+  const tgt = sameAsLast ? '' : ' · ' + fmtSets(ex.target, ex.bw);
+
+  let sets = '';
+  rows.forEach((r,i)=>{
+    const g = ghostFor(ex,i);
+    sets += '<div class="srow" data-set="'+i+'">'+
+      '<span class="sn">'+(i+1)+'</span>'+
+      '<input class="sin" inputmode="numeric" data-f="reps" value="'+esc(r.reps)+'" placeholder="'+esc(g.reps)+'">'+
+      '<span class="sx">&times;</span>'+
+      (ex.bw
+        ? '<input class="sin" value="BW" disabled style="opacity:.5">'
+        : '<input class="sin" inputmode="decimal" data-f="weight" value="'+esc(r.weight)+'" placeholder="'+esc(g.weight)+'">')+
+      '<span class="su">'+(ex.bw?'':'kg')+'</span>'+
+      '<button class="sok'+(r.done?' on':'')+'" data-ok="'+i+'"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></button>'+
+    '</div>';
+  });
+
+  const lastNote = ex.last
+    ? '<b>Last time · '+esc(ex.lastDate?fmtDate(ex.lastDate):'—')+'</b><span class="n">'+esc(fmtSets(ex.last, ex.bw))+'</span>'
+    : (ex.confirmed ? '' : '<b>First time</b>Enter what you actually lift today. It becomes your Level 1.');
+
+  return '<div class="ex'+(complete?' done':'')+'" data-ex="'+ex.id+'">'+
+    '<div class="ex-h">'+
+      '<div style="flex:1;min-width:0">'+
+        '<div class="ex-nm">'+esc(ex.name)+'</div>'+
+        '<div class="ex-tg"><span class="lv">LVL '+ex.level+'</span>'+tgt+'</div>'+
+      '</div>'+
+      '<button class="ex-mn" data-menu="'+ex.id+'">&#8942;</button>'+
+    '</div>'+
+    (lastNote?'<div class="ghost-note"><div>'+lastNote+'</div></div>':'')+
+    '<div class="ex-b">'+sets+'</div>'+
+    (adv ? '<div class="advice '+adv.k+'"><span class="di">'+adv.l+'</span><span>'+esc(adv.t)+'</span></div>' : '')+
+    '<div class="ex-f">'+
+      '<button class="lvup'+(adv&&adv.k==='go'?' hot':'')+'" data-lvup="'+ex.id+'">Level up &rarr;</button>'+
+      '<div class="felt">'+
+        ['easy','ok','hard'].map(f=>'<button class="fb'+(felt===f?' on':'')+'" data-f="'+f+'" data-felt="'+ex.id+'">'+(f==='easy'?'Easy':f==='ok'?'Just right':'Hard')+'</button>').join('')+
+      '</div>'+
+    '</div>'+
+    (past>0
+      ? '<button class="ex-hist" data-exhist="'+ex.id+'">'+
+          '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7.5V12l2.8 1.8"/></svg>'+
+          'Previous sessions ('+past+')<span class="ar">&rsaquo;</span>'+
+        '</button>'
+      : '')+
+  '</div>';
+}
+
+/* ---------- weight view ---------- */
+function renderWeight(){
+  const ws = [...S.weights].sort((a,b)=> a.date<b.date?-1:1);
+  const latest = ws[ws.length-1];
+  const first = ws[0];
+  const prev = ws[ws.length-2];
+
+  let h = '';
+  h += bannersHTML(false, 1);
+
+  h += '<div class="wt-in">'+
+    '<input id="wtVal" inputmode="decimal" placeholder="Weight in kg">'+
+    '<button id="wtAdd">Log</button>'+
+  '</div>';
+
+  if(latest){
+    const dAll = first && first!==latest ? (latest.kg - first.kg) : null;
+    const dPrev = prev ? (latest.kg - prev.kg) : null;
+    h += '<div class="wt-hero">'+
+      '<div class="wt-big">'+trimNum(latest.kg)+'<small>kg</small></div>'+
+      '<div class="wt-meta">'+
+        '<span>'+fmtDate(latest.date)+'</span>'+
+        (dPrev!=null?'<span>vs last: <b class="'+(dPrev>0?'up':dPrev<0?'dn':'')+'">'+(dPrev>0?'+':'')+trimNum(dPrev)+'kg</b></span>':'')+
+        (dAll!=null?'<span>since start: <b class="'+(dAll>0?'up':dAll<0?'dn':'')+'">'+(dAll>0?'+':'')+trimNum(dAll)+'kg</b></span>':'')+
+      '</div>'+
+      chartHTML(ws)+
+    '</div>';
+  }
+
+  h += '<div class="sec-h">Log <span>'+ws.length+' entries</span></div>';
+  if(!ws.length){
+    h += '<div class="empty"><div>No weigh-ins yet.<br>Log your first one above.</div></div>';
+  }else{
+    h += '<div class="card">';
+    [...ws].reverse().forEach((w,i,arr)=>{
+      const nx = arr[i+1];
+      const d = nx ? w.kg-nx.kg : null;
+      h += '<div class="wrow">'+
+        '<span class="v">'+trimNum(w.kg)+' kg</span>'+
+        '<span class="d">'+fmtDate(w.date)+'</span>'+
+        '<span class="dl '+(d>0?'up':d<0?'dn':'')+'">'+(d==null?'':(d>0?'+':'')+trimNum(d))+'</span>'+
+        '<button class="del" data-delw="'+w.id+'">&times;</button>'+
+      '</div>';
+    });
+    h += '</div>';
+  }
+  document.getElementById('v-weight').innerHTML = h;
+}
+
+function chartHTML(ws){
+  if(ws.length<2) return '<div style="margin-top:14px;font-size:12px;color:var(--mu2)">Log at least two weigh-ins to see the trend.</div>';
+  const W=320, H=118, pad=10;
+  const vals = ws.map(w=>w.kg);
+  let mn=Math.min.apply(null,vals), mx=Math.max.apply(null,vals);
+  if(mx-mn < 1){ const m=(mx+mn)/2; mn=m-0.5; mx=m+0.5; }
+  const rng = mx-mn;
+  const pts = ws.map((w,i)=>{
+    const x = pad + (W-pad*2) * (ws.length===1?0.5:i/(ws.length-1));
+    const y = pad + (H-pad*2) * (1-((w.kg-mn)/rng));
+    return [x,y];
+  });
+  const line = pts.map((p,i)=>(i?'L':'M')+p[0].toFixed(2)+' '+p[1].toFixed(2)).join(' ');
+  const area = line+' L'+pts[pts.length-1][0].toFixed(2)+' '+H+' L'+pts[0][0].toFixed(2)+' '+H+' Z';
+  const last = pts[pts.length-1];
+  const grid = [0,0.5,1].map(f=>{
+    const y = pad + (H-pad*2)*f;
+    return '<line x1="0" y1="'+y.toFixed(1)+'" x2="'+W+'" y2="'+y.toFixed(1)+'" stroke="rgba(255,255,255,.06)" stroke-width="1"/>';
+  }).join('');
+  const dots = pts.slice(0,-1).map(p=>
+    '<circle cx="'+p[0].toFixed(2)+'" cy="'+p[1].toFixed(2)+'" r="2.2" fill="var(--s1)" stroke="var(--ac)" stroke-width="1.4"/>'
+  ).join('');
+  return '<svg class="chart" viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="xMidYMid meet">'+
+    '<defs><linearGradient id="gw" x1="0" y1="0" x2="0" y2="1">'+
+      '<stop offset="0%" stop-color="var(--ac)" stop-opacity="0.2"/>'+
+      '<stop offset="100%" stop-color="var(--ac)" stop-opacity="0"/>'+
+    '</linearGradient></defs>'+
+    grid+
+    '<path d="'+area+'" fill="url(#gw)"/>'+
+    '<path d="'+line+'" fill="none" stroke="var(--ac)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>'+
+    dots+
+    '<circle cx="'+last[0].toFixed(2)+'" cy="'+last[1].toFixed(2)+'" r="3.6" fill="var(--ac)"/>'+
+  '</svg>'+
+  '<div style="display:flex;justify-content:space-between;font-size:10px;color:var(--mu2);margin-top:4px">'+
+    '<span>'+fmtDate(ws[0].date)+'</span><span>'+trimNum(mn)+'–'+trimNum(mx)+' kg</span><span>'+fmtDate(ws[ws.length-1].date)+'</span>'+
+  '</div>';
+}
+
+/* ---------- history view ---------- */
+function renderHistory(){
+  let h = '';
+  h += '<div class="acts">'+
+    '<button class="act" id="hReport">PDF report</button>'+
+    '<button class="act" id="hCsv">Export CSV</button>'+
+    '<button class="act" id="hBackup">Backup</button>'+
+    '<button class="act" id="hRestore">Restore</button>'+
+  '</div>';
+
+  if(!S.history.length){
+    h += '<div class="empty"><svg viewBox="0 0 24 24"><path d="M12 8v4l3 2"/><circle cx="12" cy="12" r="9"/></svg><div>No sessions logged yet.</div></div>';
+    document.getElementById('v-history').innerHTML = h;
+    return;
+  }
+
+  const byWeek = {};
+  S.history.forEach(s=>{ (byWeek[s.week] = byWeek[s.week]||[]).push(s); });
+  const weeks = Object.keys(byWeek).map(Number).sort((a,b)=>b-a);
+
+  weeks.forEach(w=>{
+    const list = byWeek[w].slice().sort((a,b)=> a.date<b.date?1:-1);
+    h += '<div class="wkhdr"><span>Week '+w+'</span></div>';
+    list.forEach(s=>{
+      const feltPills = {easy:0,ok:0,hard:0};
+      s.exercises.forEach(e=>{ if(e.felt) feltPills[e.felt]=(feltPills[e.felt]||0)+1; });
+      h += '<div class="hs" data-hs="'+s.id+'">'+
+        '<div class="hs-h">'+
+          '<div class="hs-dot"></div>'+
+          '<div class="hs-t"><b>'+DAYN[s.day]+'</b><i>'+fmtDate(s.date)+' · '+s.exercises.length+' exercises</i></div>'+
+          '<button class="ex-mn" data-delh="'+s.id+'">&times;</button>'+
+        '</div>'+
+        '<div class="hs-b">'+
+          s.exercises.map(e=>'<div class="hs-e"><b>'+esc(e.name)+
+            (e.felt?'<span class="pill '+e.felt+'">'+(e.felt==='ok'?'JUST RIGHT':e.felt.toUpperCase())+'</span>':'')+
+            '</b><span class="s">'+fmtSets(e.sets, e.bw)+'</span> <span style="color:var(--mu2);font-size:11px">· LVL '+e.level+'</span></div>').join('')+
+        '</div>'+
+      '</div>';
+    });
+  });
+  document.getElementById('v-history').innerHTML = h;
+}
+
+/* =========================================================
+   ACTIONS
+   ========================================================= */
+function finishSession(){
+  const list = S.days[curDay]||[];
+  const d = getDraft(curDay);
+  const logged = [];
+
+  list.forEach(ex=>{
+    const rows = draftRows(curDay, ex);
+    const sets = [];
+    rows.forEach(r=>{
+      const reps = num(r.reps);
+      if(reps==null) return;
+      const w = ex.bw ? null : num(r.weight);
+      if(!ex.bw && w==null) return;
+      sets.push({reps:reps, weight:w});
+    });
+    if(!sets.length) return;
+    logged.push({
+      exId: ex.id, name: ex.name, bw: ex.bw, level: ex.level,
+      sets: sets, felt: d.felt[ex.id] || null
+    });
+  });
+
+  if(!logged.length){ toast('Log at least one set first'); return; }
+
+  const when = draftDate(curDay);
+  const sess = {
+    id: uid(),
+    date: when,
+    day: curDay,
+    week: weekForDate(when),
+    exercises: logged,
+    extra: clone(d.extra)
+  };
+  S.history.push(sess);
+  // only count it against this week's ticks if it actually falls in this week
+  if(sess.week === S.week.number) S.week.done[curDay] = (S.week.done[curDay]||0) + 1;
+
+  // update exercise memory
+  logged.forEach(le=>{
+    const ex = (S.days[curDay]||[]).find(x=>x.id===le.exId);
+    if(!ex) return;
+    ex.last = le.sets.map(s=>({reps:s.reps, weight:s.weight}));
+    ex.lastDate = sess.date;
+    if(!ex.confirmed){
+      ex.target = le.sets.map(s=>({reps:s.reps, weight:s.weight}));
+      ex.backoff = ex.target.length>=2 && ex.target[ex.target.length-1].reps===ex.target[ex.target.length-2].reps;
+      ex.confirmed = true;
+    }
+  });
+
+  delete S.drafts[curDay];
+  save();
+  hideExCard();
+
+  const totalSets = logged.reduce((a,e)=>a+e.sets.length,0);
+  const volume = logged.reduce((a,e)=>a+e.sets.reduce((b,s)=>b+(s.weight?s.weight*s.reps:0),0),0);
+  showDone(DAYN[curDay]+' logged', 'Week '+sess.week+' · '+fmtDate(sess.date), [
+    {v:logged.length, l:'Exercises'},
+    {v:totalSets, l:'Sets'},
+    {v: volume>=1000 ? (volume/1000).toFixed(1)+'t' : Math.round(volume)+'kg', l:'Volume'}
+  ]);
+}
+
+/* The small card that slides up the moment an exercise is finished.
+   Same information the previous-sessions popup shows for earlier weeks. */
+let _xcT = null;
+function showExCard(ex, sets){
+  const el = document.getElementById('excard');
+  if(!el) return;
+  const vol = sets.reduce((a,s)=>a+(s.weight?s.weight*s.reps:0),0);
+  const prev = exHistory(ex.id)[0] || null;
+  let cmp = '';
+  if(prev){
+    const pv = prev.sets.reduce((a,s)=>a+(s.weight?s.weight*s.reps:0),0);
+    const dv = vol - pv;
+    const pr = prev.sets.reduce((a,s)=>a+s.reps,0);
+    const cr = sets.reduce((a,s)=>a+s.reps,0);
+    if(vol && pv && dv!==0)      cmp = '<b class="'+(dv>0?'dn':'up')+'">'+(dv>0?'+':'')+Math.round(dv)+' kg</b> vs '+fmtDateShort(prev.date);
+    else if(cr!==pr)             cmp = '<b class="'+(cr>pr?'dn':'up')+'">'+(cr>pr?'+':'')+(cr-pr)+' reps</b> vs '+fmtDateShort(prev.date);
+    else                         cmp = 'Matched '+fmtDateShort(prev.date);
+  }else{
+    cmp = 'First time logged · this is your Level '+ex.level+' baseline';
+  }
+  el.innerHTML =
+    '<div class="xc-h">'+
+      '<span class="xc-tick"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></span>'+
+      '<span class="xc-n">'+esc(ex.name)+'</span>'+
+      '<span class="xc-x">&times;</span>'+
+    '</div>'+
+    '<div class="xc-s">'+esc(fmtSets(sets, ex.bw))+'</div>'+
+    '<div class="xc-m">'+(vol?Math.round(vol)+' kg total · ':'')+cmp+'</div>';
+  el.classList.add('show');
+  clearTimeout(_xcT);
+  _xcT = setTimeout(()=>el.classList.remove('show'), 4600);
+}
+function hideExCard(){
+  clearTimeout(_xcT);
+  const el = document.getElementById('excard');
+  if(el) el.classList.remove('show');
+}
+
+function showDone(h,s,stats){
+  document.getElementById('dnH').textContent = h;
+  document.getElementById('dnS').textContent = s;
+  document.getElementById('dnSt').innerHTML = stats.map(x=>'<div><b>'+x.v+'</b><i>'+x.l+'</i></div>').join('');
+  document.getElementById('done').classList.add('show');
+}
+
+function finishWeek(){
+  const sessions = S.history.filter(s=>s.week===S.week.number);
+  S.weeks.push({
+    number: S.week.number,
+    start: S.week.start,
+    end: todayISO(),
+    sessions: sessions.length,
+    volume: sessions.reduce((a,s)=>a+s.exercises.reduce((b,e)=>b+e.sets.reduce((c,x)=>c+(x.weight?x.weight*x.reps:0),0),0),0)
+  });
+  const n = S.week.number + 1;
+  S.week = { number:n, start: todayISO(), done:{push:0,pull:0,legs:0,shoulders:0} };
+  S.drafts = {};
+  save();
+  closeModal();
+  toast('Week '+(n-1)+' closed · now on week '+n);
+  render();
+}
+
+/* =========================================================
+   MODALS
+   ========================================================= */
+let modalOpen = false;
+/* Replaces the #md node outright so that any listener a modal attached to it
+   dies with it. Without this, every re-open stacks another listener on the
+   same node and a single tap fires the handler N times. */
+function openModal(html){
+  const old = document.getElementById('md');
+  const fresh = old.cloneNode(false);
+  fresh.innerHTML = html;
+  old.parentNode.replaceChild(fresh, old);
+  document.getElementById('mask').classList.add('show');
+  fresh.scrollTop = 0;
+  modalOpen = true;
+}
+function closeModal(){
+  document.getElementById('mask').classList.remove('show');
+  document.getElementById('md').innerHTML = '';
+  modalOpen = false;
+}
+
+function setRows(sets, bw, idPrefix){
+  return sets.map((s,i)=>
+    '<div class="srow">'+
+      '<span class="sn">'+(i+1)+'</span>'+
+      '<input class="sin" inputmode="numeric" id="'+idPrefix+'r'+i+'" value="'+(s.reps==null?'':s.reps)+'" placeholder="reps">'+
+      '<span class="sx">&times;</span>'+
+      (bw ? '<input class="sin" value="BW" disabled style="opacity:.5">'
+          : '<input class="sin" inputmode="decimal" id="'+idPrefix+'w'+i+'" value="'+(s.weight==null?'':trimNum(s.weight))+'" placeholder="kg">')+
+      '<span class="su">'+(bw?'':'kg')+'</span>'+
+      '<button class="sok" data-rmset="'+i+'" style="background:transparent;border-color:transparent"><svg viewBox="0 0 24 24" style="stroke:var(--mu2)"><path d="M18 6 6 18M6 6l12 12"/></svg></button>'+
+    '</div>'
+  ).join('');
+}
+function readRows(n, bw, idPrefix){
+  const out=[];
+  for(let i=0;i<n;i++){
+    const r = document.getElementById(idPrefix+'r'+i);
+    if(!r) continue;
+    const wEl = bw?null:document.getElementById(idPrefix+'w'+i);
+    out.push({ reps: num(r.value), weight: bw?null:(wEl?num(wEl.value):null) });
+  }
+  return out.filter(s=>s.reps!=null);
+}
+
+function modalLevelUp(ex){
+  const sug = suggestNext(ex);
+  let working = sug.sets.map(s=>({reps:s.reps, weight:s.weight}));
+
+  const ruleHTML = sug.kind==='reps'
+    ? '<div class="rule"><b>Step 1 · Reps go up</b>'+
+        'Your reps are the first thing to move. Keep the exact same weights and add 2 reps to every set'+(ex.backoff?', except your last back-off set':'')+'. Only once this feels comfortable does the weight move.'+
+        '<div class="cmp">Now: '+fmtSets(ex.target, ex.bw)+'<br>Next: <em>'+fmtSets(working, ex.bw)+'</em></div>'+
+      '</div>'
+    : '<div class="rule"><b>Step 2 · Weight goes up</b>'+
+        'The higher reps are comfortable, so now the weight moves. Drop back to the lower rep range and shift every set up one weight: your old second weight becomes your new first, and you add a new top weight.'+
+        '<div class="cmp">Now: '+fmtSets(ex.target, ex.bw)+'<br>Next: <em>'+fmtSets(working, ex.bw)+'</em></div>'+
+      '</div>';
+
+  const adv = feltAdvice(ex);
+  const advHTML = adv
+    ? '<div class="advice '+adv.k+'" style="margin:15px 0 0"><span class="di">'+adv.l+'</span><span>'+esc(adv.t)+'</span></div>'
+    : '';
+
+  const draw = ()=>{
+    openModal(
+      '<div class="md-g"></div>'+
+      '<div class="md-t">'+esc(ex.name)+'</div>'+
+      '<div class="md-s">Level '+ex.level+' &rarr; Level '+(ex.level+1)+'</div>'+
+      advHTML+
+      ruleHTML+
+      '<div class="md-lb">Your new target — edit anything</div>'+
+      '<div id="luRows">'+setRows(working, ex.bw, 'lu')+'</div>'+
+      '<button class="addex" id="luAdd" style="margin-top:8px;padding:11px;font-size:12.5px">+ Add set</button>'+
+      '<div class="md-btns">'+
+        '<button class="b-no" data-close>Cancel</button>'+
+        '<button class="b-go" id="luGo">Confirm level '+(ex.level+1)+'</button>'+
+      '</div>'
+    );
+    document.getElementById('luAdd').onclick = ()=>{
+      working = readRows(working.length, ex.bw, 'lu');
+      const lastS = working[working.length-1] || {reps:6, weight:null};
+      working.push({reps:lastS.reps, weight:lastS.weight});
+      draw();
+    };
+    document.getElementById('luRows').addEventListener('click', e=>{
+      const b = e.target.closest('[data-rmset]'); if(!b) return;
+      const i = +b.dataset.rmset;
+      working = readRows(working.length, ex.bw, 'lu');
+      if(working.length<=1){ toast('Keep at least one set'); return; }
+      working.splice(i,1); draw();
+    });
+    document.getElementById('luGo').onclick = ()=>{
+      const sets = readRows(working.length, ex.bw, 'lu');
+      if(!sets.length){ toast('Add at least one set'); return; }
+      ex.target = sets;
+      ex.level += 1;
+      ex.phase = sug.phase;
+      // Keep the back-off flag. Recomputing it here would read the high-rep
+      // pattern (12/10/8/6), see no duplicate, and wreck the next step down.
+      if(sets.length < 2) ex.backoff = false;
+      ex.confirmed = true;
+      // clear this exercise's draft rows so new target shows as ghost
+      const d = getDraft(curDay);
+      if(d.sets[ex.id]) delete d.sets[ex.id];
+      save(); closeModal(); render();
+      toast(ex.name+' → Level '+ex.level);
+    };
+  };
+  draw();
+}
+
+/* How the Easy / Just right / Hard ratings feed the level-up decision.
+   Today's rating counts most; the last two logged ones back it up. */
+function feltAdvice(ex){
+  const cur  = getDraft(curDay).felt[ex.id] || null;
+  const hist = exHistory(ex.id).map(r=>r.felt).filter(Boolean);
+  const last = hist[0] || null, prev = hist[1] || null;
+  const run  = levelRun(ex);
+
+  // A genuinely hard session always wins. Otherwise a long run at one level is
+  // the strongest signal there is, stronger than any single rating.
+  if(cur==='hard') return {k:'stop', l:'Stay', t:'Rated hard. Stay on this level until it settles.'};
+  if(run >= STALL_AT) return {k:'go', l:'Stalled',
+    t:'Level '+ex.level+' for '+run+' sessions now. Move up unless it is still genuinely hard.'};
+
+  if(cur==='easy' && last==='easy')  return {k:'go',   l:'Level up', t:'Easy two sessions running. Move up now.'};
+  if(cur==='easy')                   return {k:'go',   l:'Level up', t:'Rated easy today. Good time to move up a level.'};
+  if(cur==='ok')                     return {k:'hold', l:'Hold',     t:'Just right. Repeat this level once more, then move up.'};
+  if(last==='easy' && prev==='easy') return {k:'go',   l:'Level up', t:'You rated this easy the last two sessions. You are due a level up.'};
+  if(last==='easy')                  return {k:'go',   l:'Level up', t:'You rated this easy last session. Move up if today repeats it.'};
+  if(last==='hard')                  return {k:'stop', l:'Stay',     t:'You rated this hard last session. Match it before adding anything.'};
+  if(last==='ok')                    return {k:'hold', l:'Hold',     t:'Last session felt just right. One more like it, then level up.'};
+  return null;
+}
+
+/* every logged session for one exercise, newest first */
+function exHistory(exId){
+  const out = [];
+  S.history.forEach(s=>{
+    const e = (s.exercises||[]).find(x=>x.exId===exId);
+    if(e) out.push({date:s.date, week:s.week, sets:e.sets, level:e.level, felt:e.felt, bw:e.bw});
+  });
+  return out.sort((a,b)=> a.date===b.date ? 0 : (a.date<b.date?1:-1));
+}
+
+function modalExHistory(ex){
+  const rows = exHistory(ex.id);
+  const body = rows.length
+    ? rows.slice(0,16).map(r=>{
+        const vol = r.sets.reduce((a,s)=>a+(s.weight?s.weight*s.reps:0),0);
+        return '<div class="hrow">'+
+          '<div class="hd"><b>'+esc(fmtDateShort(r.date))+'</b>Week '+r.week+'</div>'+
+          '<div class="hs2">'+esc(fmtSets(r.sets, r.bw))+
+            (vol?'<div style="font-family:\'DM Sans\',sans-serif;font-size:10.5px;color:var(--mu2);margin-top:3px">'+Math.round(vol)+' kg total</div>':'')+
+          '</div>'+
+          '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex:0 0 auto">'+
+            '<span class="hl">L'+r.level+'</span>'+
+            (r.felt?'<span class="pill '+r.felt+'">'+(r.felt==='ok'?'JUST RIGHT':r.felt.toUpperCase())+'</span>':'')+
+          '</div>'+
+        '</div>';
+      }).join('')
+    : '<div class="empty" style="padding:26px 0">No sessions logged for this one yet.</div>';
+
+  openModal(
+    '<div class="md-g"></div>'+
+    '<div class="md-t">'+esc(ex.name)+'</div>'+
+    '<div class="md-s">'+(rows.length?rows.length+' logged session'+(rows.length===1?'':'s')+' · newest first':'Nothing logged yet')+'</div>'+
+    '<div style="margin-top:14px">'+body+'</div>'+
+    (rows.length>16?'<div style="font-size:11px;color:var(--mu2);padding-top:10px">Showing the last 16. The full record is in History.</div>':'')+
+    '<div class="md-btns"><button class="b-no" data-close>Close</button></div>'
+  );
+}
+
+function modalExMenu(ex){
+  openModal(
+    '<div class="md-g"></div>'+
+    '<div class="md-t">'+esc(ex.name)+'</div>'+
+    '<div class="md-s">Level '+ex.level+' · '+fmtSets(ex.target, ex.bw)+'</div>'+
+    '<div class="mlist" style="margin-top:14px">'+
+      '<button data-x="edit"><span class="mi">✎</span>Edit name, level &amp; target</button>'+
+      '<button data-x="down"><span class="mi">↓</span>Level down</button>'+
+      '<button data-x="clear"><span class="mi">↺</span>Clear today’s entry</button>'+
+      '<button data-x="move"><span class="mi">⇅</span>Move up / down in list</button>'+
+      '<button class="rd" data-x="del"><span class="mi">🗑</span>Delete exercise</button>'+
+    '</div>'+
+    '<div class="md-btns"><button class="b-no" data-close>Close</button></div>'
+  );
+  document.getElementById('md').addEventListener('click', e=>{
+    const b = e.target.closest('[data-x]'); if(!b) return;
+    const x = b.dataset.x;
+    if(x==='edit') modalEditEx(ex);
+    if(x==='down'){
+      if(ex.level<=1){ toast('Already at level 1'); return; }
+      ex.level -= 1; ex.phase = ex.phase==='low'?'high':'low';
+      save(); closeModal(); render(); toast(ex.name+' → Level '+ex.level);
+    }
+    if(x==='clear'){
+      const d=getDraft(curDay); delete d.sets[ex.id]; delete d.felt[ex.id];
+      save(); closeModal(); render(); toast('Cleared');
+    }
+    if(x==='move') modalMoveEx(ex);
+    if(x==='del'){
+      openModal('<div class="md-g"></div><div class="md-t">Delete '+esc(ex.name)+'?</div>'+
+        '<div class="md-s">Its level and target are removed. Past sessions in your history stay untouched.</div>'+
+        '<div class="md-btns"><button class="b-no" data-close>Cancel</button><button class="b-rd" id="delGo">Delete</button></div>');
+      document.getElementById('delGo').onclick = ()=>{
+        S.days[curDay] = S.days[curDay].filter(y=>y.id!==ex.id);
+        const d=getDraft(curDay); delete d.sets[ex.id]; delete d.felt[ex.id];
+        save(); closeModal(); render(); toast('Deleted');
+      };
+    }
+  });
+}
+
+function modalEditEx(ex){
+  /* everything stays local until Save, so Cancel really cancels */
+  let working = ex.target.map(s=>({reps:s.reps, weight:s.weight}));
+  let bw = ex.bw, bo = ex.backoff, nm = ex.name, lv = ex.level, ph = ex.phase;
+
+  const grab = ()=>{
+    const n = document.getElementById('eeN'); if(n) nm = n.value;
+    const l = document.getElementById('eeL'); if(l) lv = l.value;
+    const p = document.getElementById('eeP'); if(p) ph = p.value;
+    working = readRows(working.length, bw, 'ee');
+  };
+
+  const draw = ()=>{
+    openModal(
+      '<div class="md-g"></div>'+
+      '<div class="md-t">Edit exercise</div>'+
+      '<div class="fld" style="margin-top:14px"><label>Name</label><input id="eeN" value="'+esc(nm)+'"></div>'+
+      '<div style="display:flex;gap:9px">'+
+        '<div class="fld" style="flex:1"><label>Level</label><input id="eeL" inputmode="numeric" value="'+esc(lv)+'"></div>'+
+        '<div class="fld" style="flex:1"><label>Next step is</label><select id="eeP">'+
+          '<option value="low"'+(ph==='low'?' selected':'')+'>Rep increase</option>'+
+          '<option value="high"'+(ph==='high'?' selected':'')+'>Weight increase</option>'+
+        '</select></div>'+
+      '</div>'+
+      '<div class="tog"><div class="tt">Bodyweight exercise<i>No weight entry, reps only</i></div><button class="sw'+(bw?' on':'')+'" id="eeB"></button></div>'+
+      '<div class="tog"><div class="tt">Last set is a back-off set<i>It holds its reps while the others go up</i></div><button class="sw'+(bo?' on':'')+'" id="eeK"></button></div>'+
+      '<div class="md-lb">Target sets</div>'+
+      '<div id="eeRows">'+setRows(working, bw, 'ee')+'</div>'+
+      '<button class="addex" id="eeAdd" style="margin-top:8px;padding:11px;font-size:12.5px">+ Add set</button>'+
+      '<div class="md-btns"><button class="b-no" data-close>Cancel</button><button class="b-go" id="eeGo">Save</button></div>'
+    );
+    document.getElementById('eeB').onclick = ()=>{ grab(); bw = !bw; draw(); };
+    document.getElementById('eeK').onclick = ()=>{ grab(); bo = !bo; draw(); };
+    document.getElementById('eeAdd').onclick = ()=>{
+      grab();
+      const l = working[working.length-1]||{reps:6,weight:null};
+      working.push({reps:l.reps, weight:l.weight}); draw();
+    };
+    document.getElementById('eeRows').addEventListener('click', e=>{
+      const b = e.target.closest('[data-rmset]'); if(!b) return;
+      grab();
+      if(working.length<=1){ toast('Keep at least one set'); return; }
+      working.splice(+b.dataset.rmset,1); draw();
+    });
+    document.getElementById('eeGo').onclick = ()=>{
+      grab();
+      const name = String(nm).trim();
+      if(!name){ toast('Name cannot be empty'); return; }
+      if(!working.length){ toast('Add at least one set'); return; }
+      ex.name = name;
+      ex.level = Math.max(1, num(lv)||1);
+      ex.phase = ph;
+      ex.bw = bw;
+      ex.backoff = working.length>=2 ? bo : false;
+      ex.target = working.map(s=>({reps:s.reps, weight: bw?null:s.weight}));
+      ex.confirmed = true;
+      const d = getDraft(curDay); if(d.sets[ex.id]) delete d.sets[ex.id];
+      save(); closeModal(); render(); toast('Saved');
+    };
+  };
+  draw();
+}
+
+function modalMoveEx(ex){
+  const list = S.days[curDay];
+  const i = list.findIndex(x=>x.id===ex.id);
+  openModal(
+    '<div class="md-g"></div><div class="md-t">Move '+esc(ex.name)+'</div>'+
+    '<div class="md-s">Position '+(i+1)+' of '+list.length+'</div>'+
+    '<div class="md-btns" style="margin-top:18px">'+
+      '<button class="b-no" id="mvU">↑ Move up</button>'+
+      '<button class="b-no" id="mvD">↓ Move down</button>'+
+    '</div>'+
+    '<div class="md-btns"><button class="b-no" data-close>Done</button></div>'
+  );
+  const mv = (dir)=>{
+    const j = i+dir;
+    if(j<0||j>=list.length){ toast('Already at the end'); return; }
+    const t = list[i]; list[i]=list[j]; list[j]=t;
+    save(); closeModal(); render();
+  };
+  document.getElementById('mvU').onclick = ()=>mv(-1);
+  document.getElementById('mvD').onclick = ()=>mv(1);
+}
+
+function modalAddEx(){
+  let working = [{reps:10,weight:null},{reps:8,weight:null},{reps:6,weight:null},{reps:6,weight:null}];
+  let bw = false;
+  const draw = ()=>{
+    openModal(
+      '<div class="md-g"></div>'+
+      '<div class="md-t">New exercise</div>'+
+      '<div class="md-s">Added to '+DAYN[curDay]+' at level 1.</div>'+
+      '<div class="fld" style="margin-top:14px"><label>Exercise name</label><input id="axN" placeholder="e.g. Cable fly" autocomplete="off"></div>'+
+      '<div class="tog"><div class="tt">Bodyweight exercise<i>No weight entry, reps only</i></div><button class="sw'+(bw?' on':'')+'" id="axB"></button></div>'+
+      '<div class="md-lb">Starting target — or leave blank and let your first session set it</div>'+
+      '<div id="axRows">'+setRows(working, bw, 'ax')+'</div>'+
+      '<button class="addex" id="axAdd" style="margin-top:8px;padding:11px;font-size:12.5px">+ Add set</button>'+
+      '<div class="md-btns"><button class="b-no" data-close>Cancel</button><button class="b-go" id="axGo">Add exercise</button></div>'
+    );
+    const nameEl = document.getElementById('axN');
+    if(draw._name) nameEl.value = draw._name;
+    document.getElementById('axB').onclick = ()=>{
+      draw._name = nameEl.value;
+      working = readRows(working.length, bw, 'ax'); bw = !bw; draw();
+    };
+    document.getElementById('axAdd').onclick = ()=>{
+      draw._name = nameEl.value;
+      working = readRows(working.length, bw, 'ax');
+      const l = working[working.length-1]||{reps:6,weight:null};
+      working.push({reps:l.reps, weight:l.weight}); draw();
+    };
+    document.getElementById('axRows').addEventListener('click', e=>{
+      const b = e.target.closest('[data-rmset]'); if(!b) return;
+      draw._name = nameEl.value;
+      working = readRows(working.length, bw, 'ax');
+      if(working.length<=1){ toast('Keep at least one set'); return; }
+      working.splice(+b.dataset.rmset,1); draw();
+    });
+    document.getElementById('axGo').onclick = ()=>{
+      const nm = nameEl.value.trim();
+      if(!nm){ toast('Give it a name'); return; }
+      const sets = readRows(working.length, bw, 'ax');
+      const ex = mkEx(nm, {bw:bw, reps: sets.length?sets.map(s=>s.reps):[10,8,6,6]});
+      if(sets.length) ex.target = sets.map(s=>({reps:s.reps, weight:s.weight}));
+      ex.backoff = ex.target.length>=2 && ex.target[ex.target.length-1].reps===ex.target[ex.target.length-2].reps;
+      S.days[curDay].push(ex);
+      draw._name = '';
+      save(); closeModal(); render(); toast(nm+' added');
+    };
+  };
+  draw._name='';
+  draw();
+}
+
+function modalStalled(){
+  const list = stalledList();
+  const body = list.length
+    ? list.map(s=>'<div class="hrow">'+
+        '<div class="hd" style="width:58px"><b>'+DAYN[s.day]+'</b>'+s.n+' sessions</div>'+
+        '<div class="hs2" style="font-family:\'DM Sans\',sans-serif;font-size:13px">'+esc(s.ex.name)+
+          '<div style="font-size:11px;color:var(--mu2);margin-top:2px;font-family:\'DM Mono\',monospace">'+esc(fmtSets(s.ex.target, s.ex.bw))+'</div>'+
+        '</div>'+
+        '<span class="hl">L'+s.ex.level+'</span>'+
+      '</div>').join('')
+    : '<div class="empty" style="padding:26px 0">Nothing is stalling. Everything has moved recently.</div>';
+  openModal(
+    '<div class="md-g"></div>'+
+    '<div class="md-t">Not moving</div>'+
+    '<div class="md-s">These have stayed on the same level for '+STALL_AT+' sessions or more. '+
+      'If any of them still feel hard, leave them. If they do not, that is where your progress is leaking.</div>'+
+    '<div style="margin-top:14px">'+body+'</div>'+
+    '<div class="md-btns"><button class="b-no" data-close>Close</button></div>'
+  );
+}
+
+function modalDate(){
+  const cur = draftDate(curDay);
+  const t = todayISO();
+  const yest = todayISO(new Date(Date.now()-86400000));
+  const quick = [];
+  for(let i=0;i<7;i++){
+    const iso = todayISO(new Date(Date.now()-i*86400000));
+    quick.push('<button class="day'+(iso===cur?' on':'')+'" data-qd="'+iso+'" style="margin:0">'+
+      (i===0?'Today':i===1?'Yesterday':fmtDate(iso))+'</button>');
+  }
+  openModal(
+    '<div class="md-g"></div>'+
+    '<div class="md-t">Which day was this?</div>'+
+    '<div class="md-s">Walked out and forgot to log it? Pick the day you actually trained. It goes into your history and week count on that date.</div>'+
+    '<div class="md-lb" style="margin-top:16px">Recent days</div>'+
+    '<div class="days" style="flex-wrap:wrap;gap:7px;overflow:visible;margin-bottom:14px">'+quick.join('')+'</div>'+
+    '<div class="fld"><label>Or choose a date</label><input id="dtPick" type="date" max="'+t+'" value="'+cur+'"></div>'+
+    '<div class="md-btns"><button class="b-no" data-close>Cancel</button><button class="b-go" id="dtGo">Use this day</button></div>'
+  );
+  const apply = (iso)=>{
+    if(!iso){ toast('Pick a date'); return; }
+    if(iso > todayISO()){ toast('That day has not happened yet'); return; }
+    setDraftDate(curDay, iso);
+    closeModal(); render();
+    toast(iso===todayISO() ? 'Logging for today' : 'Logging for '+fmtDate(iso));
+  };
+  document.getElementById('md').addEventListener('click', e=>{
+    const q = e.target.closest('[data-qd]'); if(!q) return;
+    apply(q.dataset.qd);
+  });
+  document.getElementById('dtGo').onclick = ()=> apply(document.getElementById('dtPick').value);
+}
+
+function modalWeek(){
+  openModal(
+    '<div class="md-g"></div>'+
+    '<div class="md-t">Training week</div>'+
+    '<div class="md-s">Started '+fmtDate(S.week.start)+' · '+DAYS.reduce((a,d)=>a+(S.week.done[d.k]||0),0)+' sessions logged.</div>'+
+    '<div class="fld" style="margin-top:16px"><label>Week number</label><input id="wkN" inputmode="numeric" value="'+S.week.number+'"></div>'+
+    '<div class="fld"><label>Week started on</label><input id="wkS" type="date" value="'+S.week.start+'"></div>'+
+    '<div class="md-lb">Days completed this week</div>'+
+    '<div class="card">'+DAYS.map(d=>
+      '<div class="simple"><div class="tx">'+d.n+'</div>'+
+      '<div style="display:flex;gap:7px;align-items:center">'+
+        '<button class="ex-mn" data-wkadj="'+d.k+'" data-dir="-1">−</button>'+
+        '<span class="mono" style="width:18px;text-align:center" id="wkc_'+d.k+'">'+(S.week.done[d.k]||0)+'</span>'+
+        '<button class="ex-mn" data-wkadj="'+d.k+'" data-dir="1">+</button>'+
+      '</div></div>'
+    ).join('')+'</div>'+
+    '<div class="md-btns"><button class="b-no" data-close>Cancel</button><button class="b-go" id="wkSave">Save changes</button></div>'+
+    '<button class="btn-ghost" id="wkClose" style="margin-top:9px">Close week '+S.week.number+' &amp; start '+(S.week.number+1)+'</button>'
+  );
+  document.getElementById('md').addEventListener('click', e=>{
+    const b = e.target.closest('[data-wkadj]'); if(!b) return;
+    const k=b.dataset.wkadj, dir=+b.dataset.dir;
+    S.week.done[k] = Math.max(0,(S.week.done[k]||0)+dir);
+    document.getElementById('wkc_'+k).textContent = S.week.done[k];
+    save();
+  });
+  document.getElementById('wkSave').onclick = ()=>{
+    const n = num(document.getElementById('wkN').value);
+    if(n!=null && n>0) S.week.number = Math.round(n);
+    const s = document.getElementById('wkS').value;
+    if(s) S.week.start = s;
+    save(); closeModal(); render(); toast('Week updated');
+  };
+  document.getElementById('wkClose').onclick = ()=>{
+    openModal('<div class="md-g"></div><div class="md-t">Close week '+S.week.number+'?</div>'+
+      '<div class="md-s">Your sessions stay in History. The week counter moves to '+(S.week.number+1)+' and the day ticks reset. Levels and targets are not affected.</div>'+
+      '<div class="md-btns"><button class="b-no" data-close>Cancel</button><button class="b-go" id="fwGo">Close week</button></div>');
+    document.getElementById('fwGo').onclick = finishWeek;
+  };
+}
+
+function modalSettings(){
+  openModal(
+    '<div class="md-g"></div>'+
+    '<div class="md-t">Settings</div>'+
+    '<div class="md-lb" style="margin-top:16px">Rest timer</div>'+
+    '<div class="fld"><label>Seconds between sets</label><input id="stRest" inputmode="numeric" value="'+S.settings.rest+'"></div>'+
+    '<div class="tog"><div class="tt">Auto-start on set tick<i>Timer runs the moment you tick a set</i></div><button class="sw'+(S.settings.autoTimer?' on':'')+'" id="stAuto"></button></div>'+
+    '<div class="tog"><div class="tt">Beep &amp; vibrate<i>When the rest is up</i></div><button class="sw'+(S.settings.sound?' on':'')+'" id="stSnd"></button></div>'+
+    '<div class="md-lb">Weigh-in</div>'+
+    '<div class="fld"><label>Reminder day</label><select id="stWd">'+
+      ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'].map((d,i)=>'<option value="'+i+'"'+(S.settings.weighDay===i?' selected':'')+'>'+d+'</option>').join('')+
+    '</select></div>'+
+    '<div class="md-lb">Data</div>'+
+    '<div style="font-size:12px;color:'+(backupDue()?'var(--or)':'var(--mu)')+';margin-bottom:6px">'+
+      (S.lastBackup
+        ? 'Last backed up '+fmtDate(S.lastBackup.date)+' at '+S.lastBackup.count+' sessions. '+
+          (S.history.length-S.lastBackup.count)+' since.'
+        : 'Never backed up. Everything lives only in this browser.')+
+    '</div>'+
+    '<div class="mlist">'+
+      '<button data-s="backup"><span class="mi">↓</span>Download backup</button>'+
+      '<button data-s="copy"><span class="mi">⧉</span>Copy backup to clipboard</button>'+
+      '<button data-s="restore"><span class="mi">↑</span>Restore from backup</button>'+
+      '<button class="rd" data-s="wipe"><span class="mi">⚠</span>Reset everything</button>'+
+    '</div>'+
+    '<div class="md-btns"><button class="b-no" data-close>Close</button><button class="b-go" id="stGo">Save</button></div>'
+  );
+  const auto=document.getElementById('stAuto'), snd=document.getElementById('stSnd');
+  auto.onclick=()=>auto.classList.toggle('on');
+  snd.onclick=()=>snd.classList.toggle('on');
+  document.getElementById('md').addEventListener('click', e=>{
+    const b=e.target.closest('[data-s]'); if(!b) return;
+    if(b.dataset.s==='backup') doBackup();
+    if(b.dataset.s==='copy') doCopyBackup();
+    if(b.dataset.s==='restore') doRestore();
+    if(b.dataset.s==='wipe'){
+      openModal('<div class="md-g"></div><div class="md-t">Reset everything?</div>'+
+        '<div class="md-s">Every session, level, target and weigh-in is deleted and the app goes back to the starting exercise list. Download a backup first if you are not sure.</div>'+
+        '<div class="md-btns"><button class="b-no" data-close>Cancel</button><button class="b-rd" id="wipeGo">Erase all data</button></div>');
+      document.getElementById('wipeGo').onclick=()=>{
+        S = freshState(); save(); closeModal(); curDay='push'; setView('workout'); render();
+        document.getElementById('app').classList.remove('show');
+        document.getElementById('landing').classList.remove('hide');
+        renderLanding(); toast('Reset complete');
+      };
+    }
+  });
+  document.getElementById('stGo').onclick = ()=>{
+    const r = num(document.getElementById('stRest').value);
+    S.settings.rest = (r!=null && r>=5) ? Math.round(r) : 120;
+    S.settings.autoTimer = auto.classList.contains('on');
+    S.settings.sound = snd.classList.contains('on');
+    S.settings.weighDay = +document.getElementById('stWd').value;
+    resetTimer();
+    save(); closeModal(); render(); toast('Settings saved');
+  };
+}
+
+/* =========================================================
+   TIMER
+   ========================================================= */
+let tState = 'idle', tLeft = 0, tInt = null, tTotal = 0;
+function renderTimerVisibility(){
+  const on = curView==='workout';
+  document.getElementById('bbar').classList.toggle('show', on);
+  const fb = document.getElementById('finSession');
+  if(fb) fb.textContent = 'Finish ' + DAYN[curDay];
+}
+function paintTimer(){
+  const el = document.getElementById('timer');
+  const m = Math.floor(Math.max(0,tLeft)/60), s = Math.max(0,tLeft)%60;
+  document.getElementById('tVal').textContent = m+':'+String(s).padStart(2,'0');
+  el.classList.toggle('run', tState==='run');
+  el.classList.toggle('done', tState==='done');
+  document.getElementById('tLab').textContent = tState==='done' ? 'Go' : 'Rest';
+  const frac = (tState==='idle') ? 0 : (tTotal ? Math.max(0,tLeft)/tTotal : 0);
+  document.getElementById('tFill').style.width = (frac*100).toFixed(1)+'%';
+}
+function resetTimer(){
+  clearInterval(tInt); tInt=null; tState='idle';
+  tTotal = S.settings.rest; tLeft = S.settings.rest;
+  paintTimer();
+}
+function startTimer(){
+  clearInterval(tInt);
+  tTotal = S.settings.rest; tLeft = S.settings.rest; tState='run';
+  paintTimer();
+  tInt = setInterval(()=>{
+    tLeft--;
+    if(tLeft<=0){
+      tLeft=0; tState='done'; clearInterval(tInt); tInt=null;
+      paintTimer(); buzz();
+      setTimeout(()=>{ if(tState==='done') resetTimer(); }, 5000);
+    }else paintTimer();
+  },1000);
+}
+function buzz(){
+  if(!S.settings.sound) return;
+  try{ if(navigator.vibrate) navigator.vibrate([170,90,170]); }catch(e){}
+  try{
+    const AC = window.AudioContext||window.webkitAudioContext; if(!AC) return;
+    const c = new AC();
+    [0,0.22].forEach(off=>{
+      const o=c.createOscillator(), g=c.createGain();
+      o.type='sine'; o.frequency.value=780;
+      g.gain.setValueAtTime(0.0001,c.currentTime+off);
+      g.gain.exponentialRampToValueAtTime(0.25,c.currentTime+off+0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001,c.currentTime+off+0.18);
+      o.connect(g); g.connect(c.destination);
+      o.start(c.currentTime+off); o.stop(c.currentTime+off+0.2);
+    });
+    setTimeout(()=>{ try{c.close();}catch(e){} }, 900);
+  }catch(e){}
+}
+
+/* =========================================================
+   EXPORT
+   ========================================================= */
+function dl(name, text, type){
+  try{
+    const b = new Blob([text], {type: type||'text/plain'});
+    const u = URL.createObjectURL(b);
+    const a = document.createElement('a');
+    a.href=u; a.download=name; document.body.appendChild(a); a.click();
+    setTimeout(()=>{ URL.revokeObjectURL(u); a.remove(); }, 400);
+  }catch(e){ toast('Download failed'); }
+}
+function markBackedUp(){
+  S.lastBackup = { date: todayISO(), count: S.history.length };
+  save();
+}
+function doBackup(){
+  dl('forge-backup-'+todayISO()+'.json', JSON.stringify(S,null,2), 'application/json');
+  markBackedUp();
+  render();
+  toast('Backup saved to your files');
+}
+/* iOS downloads can be fiddly inside a home-screen app, so there is a second
+   route that does not touch the file system at all. */
+function doCopyBackup(){
+  const txt = JSON.stringify(S);
+  const done = ()=>{ markBackedUp(); closeModal(); render(); toast('Backup copied. Paste it somewhere safe.'); };
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(txt).then(done).catch(()=>fallback());
+  }else fallback();
+  function fallback(){
+    try{
+      const ta = document.createElement('textarea');
+      ta.value = txt;
+      ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0';
+      document.body.appendChild(ta); ta.focus(); ta.select();
+      document.execCommand('copy'); ta.remove(); done();
+    }catch(e){ toast('Could not copy. Use Download backup instead.'); }
+  }
+}
+function doRestore(){
+  const inp = document.createElement('input');
+  inp.type='file'; inp.accept='.json,application/json';
+  inp.onchange = ()=>{
+    const f = inp.files && inp.files[0]; if(!f) return;
+    const rd = new FileReader();
+    rd.onload = ()=>{
+      try{
+        const o = JSON.parse(String(rd.result));
+        if(!o || !o.days) throw new Error('bad file');
+        S = migrate(o); save(); closeModal();
+        curDay='push'; setView('workout'); render();
+        toast('Backup restored');
+      }catch(e){ toast('That file could not be read'); }
+    };
+    rd.readAsText(f);
+  };
+  inp.click();
+}
+function doCSV(){
+  const rows = [['Date','Week','Day','Exercise','Level','Set','Reps','Weight kg','Felt']];
+  S.history.slice().sort((a,b)=>a.date<b.date?-1:1).forEach(s=>{
+    s.exercises.forEach(e=>{
+      e.sets.forEach((st,i)=>{
+        rows.push([s.date, s.week, DAYN[s.day], e.name, e.level, i+1, st.reps, e.bw?'BW':(st.weight==null?'':trimNum(st.weight)), e.felt||'']);
+      });
+    });
+  });
+  S.weights.slice().sort((a,b)=>a.date<b.date?-1:1).forEach(w=>{
+    rows.push([w.date,'','Bodyweight','','','','',trimNum(w.kg),'']);
+  });
+  const csv = '﻿' + rows.map(r=>r.map(c=>{
+    const s = String(c==null?'':c);
+    return /[",\n]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s;
+  }).join(',')).join('\n');
+  dl('forge-export-'+todayISO()+'.csv', csv, 'text/csv;charset=utf-8');
+  toast('CSV downloaded');
+}
+
+function reportHTML(){
+  const sess = S.history.slice().sort((a,b)=>a.date<b.date?-1:1);
+  const ws = S.weights.slice().sort((a,b)=>a.date<b.date?-1:1);
+  const totalVol = sess.reduce((a,s)=>a+s.exercises.reduce((b,e)=>b+e.sets.reduce((c,x)=>c+(x.weight?x.weight*x.reps:0),0),0),0);
+
+  const COL = {push:'#c8f04e',pull:'#60a5fa',legs:'#fb923c',shoulders:'#a78bfa'};
+
+  let body = '';
+  sess.forEach(s=>{
+    body += '<section class="pg">'+
+      '<div class="bar" style="background:'+COL[s.day]+'"></div>'+
+      '<div class="ph"><h2>'+DAYN[s.day]+'</h2><div class="pm">'+fmtDateLong(s.date)+' · Week '+s.week+'</div></div>'+
+      '<table><thead><tr><th>Exercise</th><th>Lvl</th><th>Sets logged</th><th>Felt</th></tr></thead><tbody>'+
+      s.exercises.map(e=>'<tr><td><b>'+esc(e.name)+'</b></td><td>'+e.level+'</td><td class="m">'+esc(fmtSets(e.sets,e.bw))+'</td><td>'+
+        (e.felt?'<span class="p '+e.felt+'">'+(e.felt==='ok'?'JUST RIGHT':e.felt.toUpperCase())+'</span>':'<span class="p done">DONE</span>')+'</td></tr>').join('')+
+      '</tbody></table>'+
+    '</section>';
+  });
+
+  // progression summary
+  let summary = '<section class="pg"><h2>Progression by exercise</h2>';
+  DAYS.forEach(d=>{
+    const rows = (S.days[d.k]||[]).map(ex=>{
+      const first = sess.find(s=>s.exercises.some(e=>e.exId===ex.id));
+      const firstE = first ? first.exercises.find(e=>e.exId===ex.id) : null;
+      const count = sess.reduce((a,s)=>a+(s.exercises.some(e=>e.exId===ex.id)?1:0),0);
+      if(!count) return '';
+      return '<tr><td><b>'+esc(ex.name)+'</b></td><td>'+count+'</td><td class="m">'+esc(firstE?fmtSets(firstE.sets,ex.bw):'—')+'</td><td class="m">'+esc(ex.last?fmtSets(ex.last,ex.bw):'—')+'</td><td>L'+ex.level+'</td></tr>';
+    }).filter(Boolean).join('');
+    if(!rows) return;
+    summary += '<h3 style="color:'+COL[d.k]+'">'+d.n+'</h3><table><thead><tr><th>Exercise</th><th>Sessions</th><th>Started at</th><th>Now at</th><th>Level</th></tr></thead><tbody>'+rows+'</tbody></table>';
+  });
+  summary += '</section>';
+
+  let wsec = '';
+  if(ws.length){
+    const d = ws.length>1 ? ws[ws.length-1].kg-ws[0].kg : 0;
+    wsec = '<section class="pg"><h2>Bodyweight</h2>'+
+      '<div class="pm">'+ws.length+' weigh-ins · '+trimNum(ws[0].kg)+'kg → '+trimNum(ws[ws.length-1].kg)+'kg ('+(d>0?'+':'')+trimNum(d)+'kg)</div>'+
+      '<table><thead><tr><th>Date</th><th>Weight</th><th>Change</th></tr></thead><tbody>'+
+      ws.map((w,i)=>{ const p=ws[i-1]; const c=p?w.kg-p.kg:null;
+        return '<tr><td>'+fmtDate(w.date)+'</td><td class="m">'+trimNum(w.kg)+' kg</td><td class="m">'+(c==null?'—':(c>0?'+':'')+trimNum(c)+' kg')+'</td></tr>';
+      }).join('')+'</tbody></table></section>';
+  }
+
+  return '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Forge report '+todayISO()+'</title><style>'+
+    '@page{size:A4;margin:14mm}'+
+    'body{font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#111;font-size:11pt;line-height:1.45;margin:0}'+
+    '.cover{text-align:left;padding:30mm 0 12mm;border-bottom:3px solid #111;margin-bottom:10mm}'+
+    '.cover h1{font-size:30pt;margin:0;letter-spacing:-1px}'+
+    '.cover .s{color:#666;margin-top:6px;font-size:12pt}'+
+    '.kpis{display:flex;gap:10mm;margin-top:10mm}'+
+    '.kpi b{display:block;font-size:20pt}.kpi i{font-style:normal;color:#666;font-size:9pt;text-transform:uppercase;letter-spacing:1px}'+
+    '.pg{page-break-inside:avoid;margin-bottom:9mm;padding-bottom:4mm;border-bottom:1px solid #e3e3e3;position:relative}'+
+    '.bar{height:4px;border-radius:2px;margin-bottom:6px;width:52px}'+
+    'h2{font-size:15pt;margin:0 0 2px}h3{font-size:11pt;margin:7mm 0 2mm}'+
+    '.pm{color:#666;font-size:9.5pt;margin-bottom:4mm}'+
+    'table{width:100%;border-collapse:collapse;margin-top:3mm}'+
+    'th{text-align:left;font-size:8pt;text-transform:uppercase;letter-spacing:.8px;color:#777;border-bottom:1.5px solid #ddd;padding:4px 6px}'+
+    'td{padding:5px 6px;border-bottom:1px solid #f0f0f0;font-size:10pt;vertical-align:top}'+
+    '.m{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:9pt}'+
+    '.p{font-size:7.5pt;font-weight:700;letter-spacing:.6px;padding:2px 6px;border-radius:4px;background:#eee;color:#555}'+
+    '.p.easy{background:#dcfce7;color:#166534}.p.ok{background:#dbeafe;color:#1e40af}.p.hard{background:#ffedd5;color:#9a3412}'+
+    '</style></head><body>'+
+    '<div class="cover"><h1>Training report</h1><div class="s">Dylan Beaumont · True Forge Fitness<br>'+fmtDateLong(todayISO())+'</div>'+
+    '<div class="kpis">'+
+      '<div class="kpi"><b>'+sess.length+'</b><i>Sessions</i></div>'+
+      '<div class="kpi"><b>'+S.week.number+'</b><i>Weeks</i></div>'+
+      '<div class="kpi"><b>'+(totalVol>=1000?(totalVol/1000).toFixed(1)+'t':Math.round(totalVol)+'kg')+'</b><i>Volume</i></div>'+
+      (ws.length?'<div class="kpi"><b>'+trimNum(ws[ws.length-1].kg)+'kg</b><i>Bodyweight</i></div>':'')+
+    '</div></div>'+
+    summary + wsec + body +
+    '</body></html>';
+}
+
+function doReport(){
+  if(!S.history.length){ toast('Nothing to report yet'); return; }
+  const html = reportHTML();
+  const w = window.open('', '_blank');
+  if(w){
+    w.document.open(); w.document.write(html); w.document.close();
+    setTimeout(()=>{ try{ w.focus(); w.print(); }catch(e){} }, 450);
+    toast('Choose “Save as PDF” to share it');
+  }else{
+    // fallback: hidden iframe print
+    let f = document.getElementById('printFrame');
+    if(f) f.remove();
+    f = document.createElement('iframe');
+    f.id='printFrame';
+    f.style.cssText='position:fixed;right:0;bottom:0;width:0;height:0;border:0;opacity:0';
+    document.body.appendChild(f);
+    f.contentDocument.open(); f.contentDocument.write(html); f.contentDocument.close();
+    setTimeout(()=>{ try{ f.contentWindow.focus(); f.contentWindow.print(); }catch(e){ toast('Could not open the report'); } }, 500);
+  }
+}
+
+/* =========================================================
+   LANDING
+   ========================================================= */
+/* Deliberately bare: a mark, the name, and one button. Everything the app
+   knows about your week lives inside the app, not on a splash screen. */
+function renderLanding(){}
+
+/* =========================================================
+   VIEW SWITCH
+   ========================================================= */
+function setView(v){
+  curView = v;
+  hideExCard();
+  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('on', t.dataset.v===v));
+  document.querySelectorAll('.view').forEach(x=>x.classList.toggle('on', x.id==='v-'+v));
+  render();
+  window.scrollTo(0,0);
+}
+
+/* =========================================================
+   EVENTS
+   ========================================================= */
+function bind(){
+  // landing
+  document.getElementById('btnStart').onclick = ()=>{
+    const nd = nextDay(); if(nd) curDay = nd;
+    document.getElementById('landing').classList.add('hide');
+    document.getElementById('app').classList.add('show');
+    setView('workout'); resetTimer();
+  };
+
+  // tabs
+  document.querySelectorAll('.tab').forEach(t=> t.onclick = ()=>setView(t.dataset.v));
+  document.getElementById('wkChip').onclick = modalWeek;
+  document.getElementById('btnSet').onclick = modalSettings;
+
+  // bottom bar
+  document.getElementById('timer').onclick = ()=>{
+    if(tState==='run'){ resetTimer(); }
+    else startTimer();
+  };
+  document.getElementById('finSession').onclick = confirmFinish;
+  document.getElementById('excard').addEventListener('click', e=>{
+    if(e.target.closest('.xc-x')) hideExCard();
+  });
+
+  // done overlay
+  document.getElementById('dnBtn').onclick = ()=>{
+    document.getElementById('done').classList.remove('show');
+    render();
+  };
+
+  // modal close
+  document.getElementById('mask').addEventListener('click', e=>{
+    if(e.target.id==='mask'){ closeModal(); return; }
+    if(e.target.closest('[data-close]')) closeModal();
+  });
+
+  // main delegated click
+  document.getElementById('app').addEventListener('click', onAppClick);
+  // main delegated input
+  document.getElementById('app').addEventListener('input', onAppInput);
+  document.getElementById('app').addEventListener('keydown', e=>{
+    if(e.key==='Enter' && e.target.id==='wtVal'){ addWeight(); }
+  });
+}
+
+function onAppClick(e){
+  const t = e.target;
+
+  // day switch
+  const day = t.closest('[data-day]');
+  if(day){ curDay = day.dataset.day; hideExCard(); render(); window.scrollTo({top:0,behavior:'smooth'}); return; }
+
+  const wkday = t.closest('[data-wkday]');
+  if(wkday){ curDay = wkday.dataset.wkday; hideExCard(); render(); return; }
+
+  if(t.closest('#wkFin')){ modalWeek(); return; }
+
+  // banner dismiss / actions
+  const dis = t.closest('[data-dismiss]');
+  if(dis){ S.flags[dis.dataset.dismiss]='x'; save(); render(); return; }
+  const act = t.closest('[data-act]');
+  if(act){
+    if(act.dataset.act==='goweigh') setView('weight');
+    if(act.dataset.act==='finweek') modalWeek();
+    if(act.dataset.act==='pickdate') modalDate();
+    if(act.dataset.act==='dobackup') doBackup();
+    if(act.dataset.act==='showstall') modalStalled();
+    return;
+  }
+
+  if(t.closest('#dateBar')){ modalDate(); return; }
+
+  // extras
+  const ex2 = t.closest('[data-extra]');
+  if(ex2){
+    const d = getDraft(curDay); const k = ex2.dataset.extra;
+    d.extra[k] = !d.extra[k];
+    ex2.querySelector('.cbx').classList.toggle('on', !!d.extra[k]);
+    save(); return;
+  }
+
+  // set tick
+  const ok = t.closest('[data-ok]');
+  if(ok){
+    const card = ok.closest('[data-ex]'); if(!card) return;
+    const ex = findEx(card.dataset.ex); if(!ex) return;
+    const i = +ok.dataset.ok;
+    const wasComplete = exComplete(curDay, ex);
+    const rows = draftRows(curDay, ex);
+    const row = ok.closest('.srow');
+    // pull current input values in first
+    row.querySelectorAll('[data-f]').forEach(inp=>{ rows[i][inp.dataset.f] = inp.value; });
+    // if blank, accept the ghost
+    const g = ghostFor(ex,i);
+    if(String(rows[i].reps)==='' && g.reps!==''){ rows[i].reps = g.reps; }
+    if(!ex.bw && String(rows[i].weight)==='' && g.weight!==''){ rows[i].weight = g.weight; }
+    rows[i].done = !rows[i].done;
+    save();
+    render();
+    const nowComplete = exComplete(curDay, ex);
+    if(!wasComplete && nowComplete){
+      showExCard(ex, rows.map(r=>({reps:num(r.reps), weight: ex.bw?null:num(r.weight)})));
+    }else if(wasComplete && !nowComplete){
+      hideExCard();
+    }
+    if(rows[i].done && S.settings.autoTimer) startTimer();
+    return;
+  }
+
+  // felt
+  const fe = t.closest('[data-felt]');
+  if(fe){
+    const d = getDraft(curDay); const id = fe.dataset.felt;
+    d.felt[id] = (d.felt[id]===fe.dataset.f) ? null : fe.dataset.f;
+    save(); render(); return;
+  }
+
+  // level up
+  const lu = t.closest('[data-lvup]');
+  if(lu){ const ex = findEx(lu.dataset.lvup); if(ex) modalLevelUp(ex); return; }
+
+  // per-exercise history
+  const eh = t.closest('[data-exhist]');
+  if(eh){ const ex = findEx(eh.dataset.exhist); if(ex) modalExHistory(ex); return; }
+
+  // menu
+  const mn = t.closest('[data-menu]');
+  if(mn){ const ex = findEx(mn.dataset.menu); if(ex) modalExMenu(ex); return; }
+
+  if(t.closest('#addEx')){ modalAddEx(); return; }
+
+  // weight
+  if(t.closest('#wtAdd')){ addWeight(); return; }
+  const dw = t.closest('[data-delw]');
+  if(dw){
+    S.weights = S.weights.filter(w=>w.id!==dw.dataset.delw);
+    save(); render(); toast('Removed'); return;
+  }
+
+  // history
+  const hs = t.closest('[data-hs]');
+  const dh = t.closest('[data-delh]');
+  if(dh){
+    const id = dh.dataset.delh;
+    const s = S.history.find(x=>x.id===id);
+    openModal('<div class="md-g"></div><div class="md-t">Delete this session?</div>'+
+      '<div class="md-s">'+(s?DAYN[s.day]+' · '+fmtDate(s.date):'')+'</div>'+
+      '<div class="md-btns"><button class="b-no" data-close>Cancel</button><button class="b-rd" id="dhGo">Delete</button></div>');
+    document.getElementById('dhGo').onclick = ()=>{
+      const sess = S.history.find(x=>x.id===id);
+      if(sess && sess.week===S.week.number) S.week.done[sess.day] = Math.max(0,(S.week.done[sess.day]||0)-1);
+      S.history = S.history.filter(x=>x.id!==id);
+      save(); closeModal(); render(); toast('Session deleted');
+    };
+    return;
+  }
+  if(hs){ hs.classList.toggle('open'); return; }
+
+  if(t.closest('#hReport')){ doReport(); return; }
+  if(t.closest('#hCsv')){ doCSV(); return; }
+  if(t.closest('#hBackup')){ doBackup(); return; }
+  if(t.closest('#hRestore')){ doRestore(); return; }
+}
+
+function onAppInput(e){
+  const inp = e.target.closest('[data-f]');
+  if(!inp) return;
+  const card = inp.closest('[data-ex]'); if(!card) return;
+  const ex = findEx(card.dataset.ex); if(!ex) return;
+  const row = inp.closest('.srow'); if(!row) return;
+  const i = +row.dataset.set;
+  const rows = draftRows(curDay, ex);
+  const wasComplete = exComplete(curDay, ex);
+  rows[i][inp.dataset.f] = inp.value;
+  save();
+  const nowComplete = exComplete(curDay, ex);
+  // light-touch: update completion styling without full re-render (keeps focus)
+  card.classList.toggle('done', nowComplete);
+  updateProgress();
+
+  // Finishing an exercise by typing the last value counts too, but wait for
+  // typing to settle so a half-entered number does not flash up a summary.
+  clearTimeout(onAppInput._t);
+  if(!wasComplete && nowComplete){
+    onAppInput._t = setTimeout(()=>{
+      if(exComplete(curDay, ex)){
+        showExCard(ex, draftRows(curDay, ex).map(r=>({reps:num(r.reps), weight: ex.bw?null:num(r.weight)})));
+      }
+    }, 850);
+  }else if(wasComplete && !nowComplete){
+    hideExCard();
+  }
+}
+function updateProgress(){
+  const list = S.days[curDay]||[];
+  const done = list.filter(ex=>exComplete(curDay,ex)).length;
+  const pct = list.length? Math.round(done/list.length*100):0;
+  const f = document.querySelector('.prog-f'); if(f) f.style.width = pct+'%';
+  const t = document.querySelector('.prog-t');
+  if(t) t.innerHTML = '<span>'+done+' of '+list.length+' exercises</span><b>'+pct+'%</b>';
+}
+
+function findEx(id){
+  for(const d of DAYS){
+    const f = (S.days[d.k]||[]).find(x=>x.id===id);
+    if(f) return f;
+  }
+  return null;
+}
+
+function confirmFinish(){
+  const list = S.days[curDay]||[];
+  const incomplete = list.filter(ex=>!exComplete(curDay,ex));
+  const started = list.filter(ex=>{
+    const rows = draftRows(curDay,ex);
+    return rows.some(r=>String(r.reps)!=='' || String(r.weight)!=='');
+  });
+  if(!started.length){ toast('Log at least one set first'); return; }
+  if(incomplete.length){
+    openModal('<div class="md-g"></div><div class="md-t">Finish with '+incomplete.length+' left?</div>'+
+      '<div class="md-s">These have no complete sets and will not be saved:<br><b style="color:var(--tx)">'+
+      incomplete.map(x=>esc(x.name)).join(', ')+'</b></div>'+
+      '<div class="md-btns"><button class="b-no" data-close>Keep going</button><button class="b-go" id="cfGo">Finish anyway</button></div>');
+    document.getElementById('cfGo').onclick = ()=>{ closeModal(); finishSession(); };
+  }else{
+    finishSession();
+  }
+}
+
+function addWeight(){
+  const el = document.getElementById('wtVal');
+  if(!el) return;
+  const v = num(String(el.value).replace(',','.'));
+  if(v==null || v<=0 || v>400){ toast('Enter a weight in kg'); return; }
+  const t = todayISO();
+  const existing = S.weights.find(w=>w.date===t);
+  if(existing){ existing.kg = v; }
+  else S.weights.push({id:uid(), date:t, kg:v});
+  S.flags['weigh_'+t]='x';
+  save(); render(); toast('Logged '+trimNum(v)+' kg');
+}
+
+/* =========================================================
+   BOOT
+   ========================================================= */
+function boot(){
+  S = load() || freshState();
+  save();
+  bind();
+  renderLanding();
+  resetTimer();
+  const nd = nextDay(); if(nd) curDay = nd;
+  render();
+}
+boot();
+
+/* expose for automated testing */
+window.__forge = {
+  get S(){ return S; },
+  set S(v){ S = v; },
+  render:render, save:save, load:load, freshState:freshState,
+  suggestNext:suggestNext, finishSession:finishSession, finishWeek:finishWeek,
+  setDay:function(d){ curDay=d; render(); },
+  getDay:function(){ return curDay; },
+  setView:setView, migrate:migrate, fmtSets:fmtSets, nextDay:nextDay,
+  reportHTML:reportHTML, draftRows:draftRows, getDraft:getDraft, findEx:findEx,
+  exHistory:exHistory, feltAdvice:feltAdvice, draftDate:draftDate,
+  levelRun:levelRun, stalledList:stalledList, backupDue:backupDue,
+  bannerQueue:bannerQueue, markBackedUp:markBackedUp,
+  setDraftDate:setDraftDate, weekForDate:weekForDate,
+  exComplete:function(ex){ return exComplete(curDay, ex); }
+};
+</script>
+</body>
+</html>

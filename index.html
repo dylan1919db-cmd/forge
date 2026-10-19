@@ -217,11 +217,8 @@ button{background:none;border:none;cursor:pointer}
 .sok.on{background:var(--ac);border-color:var(--ac)}
 .sok.on svg{stroke:var(--acd)}
 .ex-f{padding:11px 15px;border-top:1px solid var(--bd);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.lvup{
-  font-size:12px;font-weight:600;color:var(--ac);background:rgba(200,240,78,.1);
-  border:1px solid rgba(200,240,78,.3);padding:7px 12px;border-radius:9px
-}
-.felt{display:flex;gap:5px;margin-left:auto}
+.felt{display:flex;gap:5px;width:100%}
+.felt .fb{flex:1;text-align:center}
 .fb{font-size:11.5px;padding:7px 10px;border-radius:9px;background:var(--s2);border:1px solid var(--bd);color:var(--mu)}
 .fb.on[data-f=easy]{background:rgba(74,222,128,.15);border-color:rgba(74,222,128,.4);color:var(--gn)}
 .fb.on[data-f=ok]{background:rgba(96,165,250,.15);border-color:rgba(96,165,250,.4);color:var(--bl)}
@@ -244,19 +241,6 @@ button{background:none;border:none;cursor:pointer}
 .datebar.past svg{stroke:var(--or)}
 .datebar b{color:var(--tx);font-weight:600}
 .datebar .ch{margin-left:auto;font-size:11.5px;font-weight:600;color:var(--ac);flex:0 0 auto}
-
-.advice{
-  margin:0 15px 13px;border-radius:9px;padding:9px 12px;font-size:12px;line-height:1.4;
-  display:flex;gap:8px;align-items:flex-start
-}
-.advice .di{flex:0 0 auto;font-weight:700;font-size:10px;letter-spacing:.09em;text-transform:uppercase}
-.advice.go{background:rgba(74,222,128,.1);border:1px solid rgba(74,222,128,.28);color:#bdf0cf}
-.advice.go .di{color:var(--gn)}
-.advice.hold{background:rgba(96,165,250,.09);border:1px solid rgba(96,165,250,.26);color:#c6dcf8}
-.advice.hold .di{color:var(--bl)}
-.advice.stop{background:rgba(251,146,60,.09);border:1px solid rgba(251,146,60,.26);color:#ffd7b6}
-.advice.stop .di{color:var(--or)}
-.lvup.hot{background:var(--ac);color:var(--acd);border-color:var(--ac)}
 
 #excard{
   position:fixed;left:14px;right:14px;bottom:calc(var(--sab) + 80px);z-index:95;
@@ -361,7 +345,16 @@ button{background:none;border:none;cursor:pointer}
   display:flex;flex-direction:column;align-items:center;justify-content:center;
   position:relative;overflow:hidden
 }
-#timer .tfill{position:absolute;left:0;top:0;bottom:0;width:0;background:var(--ac);transition:width .95s linear}
+#timer .tfill{position:absolute;left:0;top:0;bottom:0;width:0;background:var(--ac);transition:width .3s linear}
+#timer.flash{animation:tflash .45s ease-in-out 3}
+@keyframes tflash{0%,100%{filter:none}50%{filter:brightness(1.75)}}
+.setadj{display:flex;gap:7px;margin-top:9px}
+.setadj button{
+  flex:1;background:transparent;border:1px dashed var(--ln);color:var(--mu);
+  border-radius:9px;padding:8px 0;font-size:11.5px;font-weight:600;letter-spacing:.04em;
+  font-family:inherit;cursor:pointer
+}
+.setadj button:active{background:var(--el);color:var(--tx)}
 #timer .tv,#timer .tl{position:relative;z-index:1}
 .tv{font-family:'DM Mono',monospace;font-size:16px;font-weight:600;letter-spacing:-.02em;line-height:1.1}
 .tl{font-size:8px;letter-spacing:.13em;color:var(--mu);text-transform:uppercase;margin-top:2px}
@@ -594,18 +587,14 @@ let curView = 'workout';
 
 function mkEx(name, opts){
   opts = opts||{};
-  const reps = opts.reps || [10,8,6,6];
+  const n = opts.sets || (opts.reps ? opts.reps.length : 4);
   return {
     id: uid(),
     name: name,
     bw: !!opts.bw,
-    level: 1,
-    phase: 'low',
-    backoff: reps.length>=2 && reps[reps.length-1]===reps[reps.length-2],
-    target: reps.map(r=>({reps:r, weight:null})),
+    sets: n,
     last: null,
-    lastDate: null,
-    confirmed: false
+    lastDate: null
   };
 }
 
@@ -662,46 +651,18 @@ function migrate(o){
         const t=ex.target; ex.backoff = t.length>=2 && t[t.length-1].reps===t[t.length-2].reps;
       }
       ex.bw = !!ex.bw;
-      ex.confirmed = !!ex.confirmed;
       if(ex.last && !Array.isArray(ex.last)) ex.last=null;
+      /* How many blank rows to put up. Last session wins, then the old target,
+         then four. Legacy level/phase/target/backoff fields are left on the
+         object untouched so an older build still reads this data. */
+      if(!ex.sets){
+        ex.sets = (ex.last && ex.last.length) ? ex.last.length
+                : (Array.isArray(ex.target) && ex.target.length ? ex.target.length : 4);
+      }
+      ex.sets = Math.max(1, Math.min(12, num(ex.sets)||4));
     });
   });
   return o;
-}
-
-/* ---------- progression engine ---------- */
-function suggestNext(ex){
-  const t = ex.target.map(s=>({reps:s.reps, weight:s.weight}));
-  const n = t.length;
-  if(ex.phase === 'low'){
-    const sets = t.map((s,i)=>({
-      reps: (ex.backoff && i===n-1) ? s.reps : s.reps + 2,
-      weight: s.weight
-    }));
-    return { sets:sets, phase:'high', kind:'reps' };
-  }
-  const reps = t.map((s,i)=>({
-    reps: (ex.backoff && i===n-1) ? s.reps : Math.max(1, s.reps - 2)
-  }));
-  let w;
-  if(ex.bw){
-    w = t.map(s=>s.weight);
-  }else{
-    const ws = t.map(s=>s.weight);
-    const allNull = ws.every(x=>x==null);
-    if(allNull){ w = ws.slice(); }
-    else{
-      w = ws.slice(1);
-      const lastW = ws[n-1], prevW = ws[n-2];
-      let top = null;
-      if(lastW!=null && prevW!=null){
-        const step = lastW - prevW;
-        top = step>0 ? +(lastW + step).toFixed(2) : +(lastW + (lastW*0.05)).toFixed(1);
-      }else if(lastW!=null){ top = lastW; }
-      w.push(top);
-    }
-  }
-  return { sets: reps.map((r,i)=>({reps:r.reps, weight: w[i]===undefined?null:w[i]})), phase:'low', kind:'weight' };
 }
 
 function fmtSets(sets, bw){
@@ -712,7 +673,7 @@ function fmtSets(sets, bw){
   return sets.map(s=>{
     const r = s.reps==null?'?':s.reps;
     if(bw) return r+'×BW';
-    return r+'×'+(s.weight==null?'?':trimNum(s.weight))+'kg';
+    return s.weight==null ? String(r) : r+'×'+trimNum(s.weight)+'kg';
   }).join('  ');
 }
 function trimNum(n){ if(n==null) return ''; const r=Math.round(n*100)/100; return String(r); }
@@ -726,20 +687,30 @@ function getDraft(day){
 }
 function draftRows(day, ex){
   const d = getDraft(day);
-  if(!d.sets[ex.id] || d.sets[ex.id].length !== ex.target.length){
-    const old = d.sets[ex.id]||[];
-    d.sets[ex.id] = ex.target.map((t,i)=> old[i] ? old[i] : {reps:'',weight:'',done:false});
+  if(!Array.isArray(d.sets[ex.id]) || !d.sets[ex.id].length){
+    const n = Math.max(1, ex.sets || 4);
+    const out = [];
+    for(let i=0;i<n;i++) out.push({reps:'',weight:'',done:false});
+    d.sets[ex.id] = out;
   }
   return d.sets[ex.id];
 }
-/* The placeholder is what you are meant to hit today: the level target when it
-   is fully specified, otherwise whatever you did last time. After a level up
-   this means the new numbers guide you, while the box above still shows what
-   you actually did last session. */
+function addSetRow(day, ex){
+  const rows = draftRows(day, ex);
+  if(rows.length>=12){ toast('Twelve sets is the limit'); return; }
+  rows.push({reps:'',weight:'',done:false});
+  save();
+}
+function removeSetRow(day, ex){
+  const rows = draftRows(day, ex);
+  if(rows.length<=1){ toast('Keep at least one set'); return; }
+  rows.pop();
+  save();
+}
+/* The faint text in an empty box is only ever what you did last session.
+   Nothing is prescribed and nothing is filled in for you. */
 function ghostFor(ex, i){
-  const tgt = ex.target[i] || null;
-  const tgtReady = tgt && tgt.reps!=null && (ex.bw || tgt.weight!=null);
-  const src = tgtReady ? tgt : ((ex.last && ex.last[i]) ? ex.last[i] : tgt);
+  const src = (ex.last && ex.last[i]) ? ex.last[i] : null;
   if(!src) return {reps:'',weight:''};
   return { reps: src.reps==null?'':String(src.reps), weight: src.weight==null?'':trimNum(src.weight) };
 }
@@ -770,9 +741,21 @@ function lastLoggedDate(){
   return best;
 }
 
+/* Reps are the only thing a set must have. Plenty of what you do carries no
+   number worth typing: bodyweight calf raises, a machine with no stack
+   markings, lunges counted in lengths. The old build threw those sets away at
+   save time without saying so. */
+function rowFilled(ex, r){ return num(r.reps)!=null; }
+/* Done means every row you have touched is a complete set, and at least one
+   is. A spare blank row at the bottom does not undo the exercise. */
 function exComplete(day, ex){
   const rows = draftRows(day, ex);
-  return rows.every(r=> num(r.reps)!=null && (ex.bw || num(r.weight)!=null) );
+  let filled=0, touched=0;
+  rows.forEach(r=>{
+    if(String(r.reps)!=='' || String(r.weight)!=='') touched++;
+    if(rowFilled(ex,r)) filled++;
+  });
+  return filled>0 && filled===touched;
 }
 function anyEntered(day){
   const d = getDraft(day);
@@ -832,25 +815,6 @@ function weekStripHTML(){
 /* How many of the most recent sessions were logged at the level this exercise
    is on now. Progressive overload fails quietly: not a bad session, but weeks
    at the same weight where nothing ever felt wrong enough to change it. */
-const STALL_AT = 4;
-function levelRun(ex){
-  const h = exHistory(ex.id);
-  let n = 0;
-  for(let i=0;i<h.length;i++){
-    if(h[i].level === ex.level) n++; else break;
-  }
-  return n;
-}
-function stalledList(){
-  const out = [];
-  DAYS.forEach(d=>{
-    (S.days[d.k]||[]).forEach(ex=>{
-      const n = levelRun(ex);
-      if(n >= STALL_AT) out.push({ex:ex, day:d.k, n:n});
-    });
-  });
-  return out.sort((a,b)=> b.n - a.n);
-}
 
 /* ---------- backup health ---------- */
 function backupDue(){
@@ -900,7 +864,7 @@ function bannerQueue(includeDay){
     if(!S.history.some(s=>s.day===curDay)){
       q.push({p:2, html:'<div class="ban ban-blue">'+
         '<span class="bt">First '+DAYN[curDay].toLowerCase()+' session</span>'+
-        'Whatever you enter today becomes your baseline — Level 1 for every '+DAYN[curDay].toLowerCase()+' exercise.'+
+        'Whatever you enter today becomes the faint reference under each box next time.'+
       '</div>'});
     }
   }
@@ -924,18 +888,6 @@ function bannerQueue(includeDay){
     '<br><button class="ban-act" data-act="dobackup">Back up now</button>'+
     '<button class="bx" data-dismiss="bk_'+S.history.length+'">&times;</button></div>'});
 
-  // 5 — stalled exercises
-  const stalled = stalledList();
-  if(stalled.length && S.flags['st_'+S.week.number]!=='x'){
-    q.push({p:5, html:'<div class="ban ban-amber" data-ban="stall">'+
-      '<span class="bt">'+(stalled.length===1?'One exercise has not moved':stalled.length+' exercises have not moved')+'</span>'+
-      (stalled.length===1
-        ? esc(stalled[0].ex.name)+' has been on level '+stalled[0].ex.level+' for '+stalled[0].n+' sessions.'
-        : 'Each has sat on the same level for '+STALL_AT+' sessions or more. That is where overload quietly stops.')+
-      '<br><button class="ban-act" data-act="showstall">Show me</button>'+
-      '<button class="bx" data-dismiss="st_'+S.week.number+'">&times;</button></div>'});
-  }
-
   // 6 — close the week
   const elapsed = daysBetween(S.week.start, t);
   const sessions = DAYS.reduce((a,d)=>a+(S.week.done[d.k]||0),0);
@@ -944,15 +896,6 @@ function bannerQueue(includeDay){
       '<span class="bt">Week '+S.week.number+' looks complete</span>'+sessions+' sessions logged over '+(elapsed+1)+' days.'+
       '<br><button class="ban-act" data-act="finweek">Close week</button>'+
       '<button class="bx" data-dismiss="wk_'+S.week.number+'">&times;</button></div>'});
-  }
-
-  // 7 — how levelling up works
-  if(includeDay && S.history.some(s=>s.day===curDay) && S.flags['adv_'+S.week.number+'_'+curDay]!=='x'){
-    q.push({p:7, html:'<div class="ban ban-blue">'+
-      '<span class="bt">Levelling up</span>'+
-      'Tap <b>Level up</b> on any exercise. It is either more reps at the same weight, '+
-      'or back to your lower reps at a heavier weight — never both at once.'+
-      '<button class="bx" data-dismiss="adv_'+S.week.number+'_'+curDay+'">&times;</button></div>'});
   }
 
   return q.sort((a,b)=>a.p-b.p);
@@ -1039,9 +982,6 @@ function exHTML(ex){
   const complete = exComplete(curDay, ex);
   const felt = getDraft(curDay).felt[ex.id];
   const past = exHistory(ex.id).length;
-  const adv = feltAdvice(ex);
-  const sameAsLast = !!ex.last && JSON.stringify(ex.last)===JSON.stringify(ex.target);
-  const tgt = sameAsLast ? '' : ' · ' + fmtSets(ex.target, ex.bw);
 
   let sets = '';
   rows.forEach((r,i)=>{
@@ -1060,21 +1000,24 @@ function exHTML(ex){
 
   const lastNote = ex.last
     ? '<b>Last time · '+esc(ex.lastDate?fmtDate(ex.lastDate):'—')+'</b><span class="n">'+esc(fmtSets(ex.last, ex.bw))+'</span>'
-    : (ex.confirmed ? '' : '<b>First time</b>Enter what you actually lift today. It becomes your Level 1.');
+    : '<b>First time</b>Enter whatever you actually do.';
 
   return '<div class="ex'+(complete?' done':'')+'" data-ex="'+ex.id+'">'+
     '<div class="ex-h">'+
       '<div style="flex:1;min-width:0">'+
         '<div class="ex-nm">'+esc(ex.name)+'</div>'+
-        '<div class="ex-tg"><span class="lv">LVL '+ex.level+'</span>'+tgt+'</div>'+
+        '<div class="ex-tg">'+rows.length+' set'+(rows.length===1?'':'s')+'</div>'+
       '</div>'+
       '<button class="ex-mn" data-menu="'+ex.id+'">&#8942;</button>'+
     '</div>'+
     (lastNote?'<div class="ghost-note"><div>'+lastNote+'</div></div>':'')+
-    '<div class="ex-b">'+sets+'</div>'+
-    (adv ? '<div class="advice '+adv.k+'"><span class="di">'+adv.l+'</span><span>'+esc(adv.t)+'</span></div>' : '')+
+    '<div class="ex-b">'+sets+
+      '<div class="setadj">'+
+        '<button data-rmrow="'+ex.id+'">&minus; Set</button>'+
+        '<button data-addrow="'+ex.id+'">+ Set</button>'+
+      '</div>'+
+    '</div>'+
     '<div class="ex-f">'+
-      '<button class="lvup'+(adv&&adv.k==='go'?' hot':'')+'" data-lvup="'+ex.id+'">Level up &rarr;</button>'+
       '<div class="felt">'+
         ['easy','ok','hard'].map(f=>'<button class="fb'+(felt===f?' on':'')+'" data-f="'+f+'" data-felt="'+ex.id+'">'+(f==='easy'?'Easy':f==='ok'?'Just right':'Hard')+'</button>').join('')+
       '</div>'+
@@ -1210,7 +1153,7 @@ function renderHistory(){
         '<div class="hs-b">'+
           s.exercises.map(e=>'<div class="hs-e"><b>'+esc(e.name)+
             (e.felt?'<span class="pill '+e.felt+'">'+(e.felt==='ok'?'JUST RIGHT':e.felt.toUpperCase())+'</span>':'')+
-            '</b><span class="s">'+fmtSets(e.sets, e.bw)+'</span> <span style="color:var(--mu2);font-size:11px">· LVL '+e.level+'</span></div>').join('')+
+            '</b><span class="s">'+fmtSets(e.sets, e.bw)+'</span></div>').join('')+
         '</div>'+
       '</div>';
     });
@@ -1232,13 +1175,11 @@ function finishSession(){
     rows.forEach(r=>{
       const reps = num(r.reps);
       if(reps==null) return;
-      const w = ex.bw ? null : num(r.weight);
-      if(!ex.bw && w==null) return;
-      sets.push({reps:reps, weight:w});
+      sets.push({reps:reps, weight: ex.bw ? null : num(r.weight)});
     });
     if(!sets.length) return;
     logged.push({
-      exId: ex.id, name: ex.name, bw: ex.bw, level: ex.level,
+      exId: ex.id, name: ex.name, bw: ex.bw,
       sets: sets, felt: d.felt[ex.id] || null
     });
   });
@@ -1264,11 +1205,7 @@ function finishSession(){
     if(!ex) return;
     ex.last = le.sets.map(s=>({reps:s.reps, weight:s.weight}));
     ex.lastDate = sess.date;
-    if(!ex.confirmed){
-      ex.target = le.sets.map(s=>({reps:s.reps, weight:s.weight}));
-      ex.backoff = ex.target.length>=2 && ex.target[ex.target.length-1].reps===ex.target[ex.target.length-2].reps;
-      ex.confirmed = true;
-    }
+    ex.sets = le.sets.length;
   });
 
   delete S.drafts[curDay];
@@ -1302,7 +1239,7 @@ function showExCard(ex, sets){
     else if(cr!==pr)             cmp = '<b class="'+(cr>pr?'dn':'up')+'">'+(cr>pr?'+':'')+(cr-pr)+' reps</b> vs '+fmtDateShort(prev.date);
     else                         cmp = 'Matched '+fmtDateShort(prev.date);
   }else{
-    cmp = 'First time logged · this is your Level '+ex.level+' baseline';
+    cmp = 'First time logged';
   }
   el.innerHTML =
     '<div class="xc-h">'+
@@ -1369,126 +1306,18 @@ function closeModal(){
   modalOpen = false;
 }
 
-function setRows(sets, bw, idPrefix){
-  return sets.map((s,i)=>
-    '<div class="srow">'+
-      '<span class="sn">'+(i+1)+'</span>'+
-      '<input class="sin" inputmode="numeric" id="'+idPrefix+'r'+i+'" value="'+(s.reps==null?'':s.reps)+'" placeholder="reps">'+
-      '<span class="sx">&times;</span>'+
-      (bw ? '<input class="sin" value="BW" disabled style="opacity:.5">'
-          : '<input class="sin" inputmode="decimal" id="'+idPrefix+'w'+i+'" value="'+(s.weight==null?'':trimNum(s.weight))+'" placeholder="kg">')+
-      '<span class="su">'+(bw?'':'kg')+'</span>'+
-      '<button class="sok" data-rmset="'+i+'" style="background:transparent;border-color:transparent"><svg viewBox="0 0 24 24" style="stroke:var(--mu2)"><path d="M18 6 6 18M6 6l12 12"/></svg></button>'+
-    '</div>'
-  ).join('');
-}
-function readRows(n, bw, idPrefix){
-  const out=[];
-  for(let i=0;i<n;i++){
-    const r = document.getElementById(idPrefix+'r'+i);
-    if(!r) continue;
-    const wEl = bw?null:document.getElementById(idPrefix+'w'+i);
-    out.push({ reps: num(r.value), weight: bw?null:(wEl?num(wEl.value):null) });
-  }
-  return out.filter(s=>s.reps!=null);
-}
-
-function modalLevelUp(ex){
-  const sug = suggestNext(ex);
-  let working = sug.sets.map(s=>({reps:s.reps, weight:s.weight}));
-
-  const ruleHTML = sug.kind==='reps'
-    ? '<div class="rule"><b>Step 1 · Reps go up</b>'+
-        'Your reps are the first thing to move. Keep the exact same weights and add 2 reps to every set'+(ex.backoff?', except your last back-off set':'')+'. Only once this feels comfortable does the weight move.'+
-        '<div class="cmp">Now: '+fmtSets(ex.target, ex.bw)+'<br>Next: <em>'+fmtSets(working, ex.bw)+'</em></div>'+
-      '</div>'
-    : '<div class="rule"><b>Step 2 · Weight goes up</b>'+
-        'The higher reps are comfortable, so now the weight moves. Drop back to the lower rep range and shift every set up one weight: your old second weight becomes your new first, and you add a new top weight.'+
-        '<div class="cmp">Now: '+fmtSets(ex.target, ex.bw)+'<br>Next: <em>'+fmtSets(working, ex.bw)+'</em></div>'+
-      '</div>';
-
-  const adv = feltAdvice(ex);
-  const advHTML = adv
-    ? '<div class="advice '+adv.k+'" style="margin:15px 0 0"><span class="di">'+adv.l+'</span><span>'+esc(adv.t)+'</span></div>'
-    : '';
-
-  const draw = ()=>{
-    openModal(
-      '<div class="md-g"></div>'+
-      '<div class="md-t">'+esc(ex.name)+'</div>'+
-      '<div class="md-s">Level '+ex.level+' &rarr; Level '+(ex.level+1)+'</div>'+
-      advHTML+
-      ruleHTML+
-      '<div class="md-lb">Your new target — edit anything</div>'+
-      '<div id="luRows">'+setRows(working, ex.bw, 'lu')+'</div>'+
-      '<button class="addex" id="luAdd" style="margin-top:8px;padding:11px;font-size:12.5px">+ Add set</button>'+
-      '<div class="md-btns">'+
-        '<button class="b-no" data-close>Cancel</button>'+
-        '<button class="b-go" id="luGo">Confirm level '+(ex.level+1)+'</button>'+
-      '</div>'
-    );
-    document.getElementById('luAdd').onclick = ()=>{
-      working = readRows(working.length, ex.bw, 'lu');
-      const lastS = working[working.length-1] || {reps:6, weight:null};
-      working.push({reps:lastS.reps, weight:lastS.weight});
-      draw();
-    };
-    document.getElementById('luRows').addEventListener('click', e=>{
-      const b = e.target.closest('[data-rmset]'); if(!b) return;
-      const i = +b.dataset.rmset;
-      working = readRows(working.length, ex.bw, 'lu');
-      if(working.length<=1){ toast('Keep at least one set'); return; }
-      working.splice(i,1); draw();
-    });
-    document.getElementById('luGo').onclick = ()=>{
-      const sets = readRows(working.length, ex.bw, 'lu');
-      if(!sets.length){ toast('Add at least one set'); return; }
-      ex.target = sets;
-      ex.level += 1;
-      ex.phase = sug.phase;
-      // Keep the back-off flag. Recomputing it here would read the high-rep
-      // pattern (12/10/8/6), see no duplicate, and wreck the next step down.
-      if(sets.length < 2) ex.backoff = false;
-      ex.confirmed = true;
-      // clear this exercise's draft rows so new target shows as ghost
-      const d = getDraft(curDay);
-      if(d.sets[ex.id]) delete d.sets[ex.id];
-      save(); closeModal(); render();
-      toast(ex.name+' → Level '+ex.level);
-    };
-  };
-  draw();
-}
-
-/* How the Easy / Just right / Hard ratings feed the level-up decision.
-   Today's rating counts most; the last two logged ones back it up. */
-function feltAdvice(ex){
-  const cur  = getDraft(curDay).felt[ex.id] || null;
-  const hist = exHistory(ex.id).map(r=>r.felt).filter(Boolean);
-  const last = hist[0] || null, prev = hist[1] || null;
-  const run  = levelRun(ex);
-
-  // A genuinely hard session always wins. Otherwise a long run at one level is
-  // the strongest signal there is, stronger than any single rating.
-  if(cur==='hard') return {k:'stop', l:'Stay', t:'Rated hard. Stay on this level until it settles.'};
-  if(run >= STALL_AT) return {k:'go', l:'Stalled',
-    t:'Level '+ex.level+' for '+run+' sessions now. Move up unless it is still genuinely hard.'};
-
-  if(cur==='easy' && last==='easy')  return {k:'go',   l:'Level up', t:'Easy two sessions running. Move up now.'};
-  if(cur==='easy')                   return {k:'go',   l:'Level up', t:'Rated easy today. Good time to move up a level.'};
-  if(cur==='ok')                     return {k:'hold', l:'Hold',     t:'Just right. Repeat this level once more, then move up.'};
-  if(last==='easy' && prev==='easy') return {k:'go',   l:'Level up', t:'You rated this easy the last two sessions. You are due a level up.'};
-  if(last==='easy')                  return {k:'go',   l:'Level up', t:'You rated this easy last session. Move up if today repeats it.'};
-  if(last==='hard')                  return {k:'stop', l:'Stay',     t:'You rated this hard last session. Match it before adding anything.'};
-  if(last==='ok')                    return {k:'hold', l:'Hold',     t:'Last session felt just right. One more like it, then level up.'};
-  return null;
-}
-
-/* every logged session for one exercise, newest first */
+/* Match on id first, then on name. Deleting and re-adding an exercise gives it
+   a new id, which used to orphan everything logged under the old one. */
 function exHistory(exId){
   const out = [];
+  let nm = null;
+  DAYS.forEach(d=>{ (S.days[d.k]||[]).forEach(x=>{ if(x.id===exId) nm = x.name; }); });
+  const liveIds = {};
+  DAYS.forEach(d=>{ (S.days[d.k]||[]).forEach(x=>{ liveIds[x.id]=1; }); });
   S.history.forEach(s=>{
-    const e = (s.exercises||[]).find(x=>x.exId===exId);
+    const e = (s.exercises||[]).find(x=>
+      x.exId===exId || (nm && x.name===nm && !liveIds[x.exId])
+    );
     if(e) out.push({date:s.date, week:s.week, sets:e.sets, level:e.level, felt:e.felt, bw:e.bw});
   });
   return out.sort((a,b)=> a.date===b.date ? 0 : (a.date<b.date?1:-1));
@@ -1505,7 +1334,7 @@ function modalExHistory(ex){
             (vol?'<div style="font-family:\'DM Sans\',sans-serif;font-size:10.5px;color:var(--mu2);margin-top:3px">'+Math.round(vol)+' kg total</div>':'')+
           '</div>'+
           '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex:0 0 auto">'+
-            '<span class="hl">L'+r.level+'</span>'+
+            (r.level?'<span class="hl">L'+r.level+'</span>':'')+
             (r.felt?'<span class="pill '+r.felt+'">'+(r.felt==='ok'?'JUST RIGHT':r.felt.toUpperCase())+'</span>':'')+
           '</div>'+
         '</div>';
@@ -1526,10 +1355,9 @@ function modalExMenu(ex){
   openModal(
     '<div class="md-g"></div>'+
     '<div class="md-t">'+esc(ex.name)+'</div>'+
-    '<div class="md-s">Level '+ex.level+' · '+fmtSets(ex.target, ex.bw)+'</div>'+
+    '<div class="md-s">'+(ex.last ? 'Last time · '+esc(fmtSets(ex.last, ex.bw)) : 'Nothing logged yet')+'</div>'+
     '<div class="mlist" style="margin-top:14px">'+
-      '<button data-x="edit"><span class="mi">✎</span>Edit name, level &amp; target</button>'+
-      '<button data-x="down"><span class="mi">↓</span>Level down</button>'+
+      '<button data-x="edit"><span class="mi">✎</span>Edit name &amp; sets</button>'+
       '<button data-x="clear"><span class="mi">↺</span>Clear today’s entry</button>'+
       '<button data-x="move"><span class="mi">⇅</span>Move up / down in list</button>'+
       '<button class="rd" data-x="del"><span class="mi">🗑</span>Delete exercise</button>'+
@@ -1540,11 +1368,6 @@ function modalExMenu(ex){
     const b = e.target.closest('[data-x]'); if(!b) return;
     const x = b.dataset.x;
     if(x==='edit') modalEditEx(ex);
-    if(x==='down'){
-      if(ex.level<=1){ toast('Already at level 1'); return; }
-      ex.level -= 1; ex.phase = ex.phase==='low'?'high':'low';
-      save(); closeModal(); render(); toast(ex.name+' → Level '+ex.level);
-    }
     if(x==='clear'){
       const d=getDraft(curDay); delete d.sets[ex.id]; delete d.felt[ex.id];
       save(); closeModal(); render(); toast('Cleared');
@@ -1552,7 +1375,7 @@ function modalExMenu(ex){
     if(x==='move') modalMoveEx(ex);
     if(x==='del'){
       openModal('<div class="md-g"></div><div class="md-t">Delete '+esc(ex.name)+'?</div>'+
-        '<div class="md-s">Its level and target are removed. Past sessions in your history stay untouched.</div>'+
+        '<div class="md-s">It is removed from this day. Past sessions in your history stay untouched.</div>'+
         '<div class="md-btns"><button class="b-no" data-close>Cancel</button><button class="b-rd" id="delGo">Delete</button></div>');
       document.getElementById('delGo').onclick = ()=>{
         S.days[curDay] = S.days[curDay].filter(y=>y.id!==ex.id);
@@ -1564,62 +1387,30 @@ function modalExMenu(ex){
 }
 
 function modalEditEx(ex){
-  /* everything stays local until Save, so Cancel really cancels */
-  let working = ex.target.map(s=>({reps:s.reps, weight:s.weight}));
-  let bw = ex.bw, bo = ex.backoff, nm = ex.name, lv = ex.level, ph = ex.phase;
-
-  const grab = ()=>{
-    const n = document.getElementById('eeN'); if(n) nm = n.value;
-    const l = document.getElementById('eeL'); if(l) lv = l.value;
-    const p = document.getElementById('eeP'); if(p) ph = p.value;
-    working = readRows(working.length, bw, 'ee');
-  };
+  let bw = ex.bw, nm = ex.name, n = Math.max(1, ex.sets||4);
 
   const draw = ()=>{
     openModal(
       '<div class="md-g"></div>'+
       '<div class="md-t">Edit exercise</div>'+
       '<div class="fld" style="margin-top:14px"><label>Name</label><input id="eeN" value="'+esc(nm)+'"></div>'+
-      '<div style="display:flex;gap:9px">'+
-        '<div class="fld" style="flex:1"><label>Level</label><input id="eeL" inputmode="numeric" value="'+esc(lv)+'"></div>'+
-        '<div class="fld" style="flex:1"><label>Next step is</label><select id="eeP">'+
-          '<option value="low"'+(ph==='low'?' selected':'')+'>Rep increase</option>'+
-          '<option value="high"'+(ph==='high'?' selected':'')+'>Weight increase</option>'+
-        '</select></div>'+
-      '</div>'+
+      '<div class="fld"><label>Sets to show by default</label><input id="eeS" inputmode="numeric" value="'+n+'"></div>'+
       '<div class="tog"><div class="tt">Bodyweight exercise<i>No weight entry, reps only</i></div><button class="sw'+(bw?' on':'')+'" id="eeB"></button></div>'+
-      '<div class="tog"><div class="tt">Last set is a back-off set<i>It holds its reps while the others go up</i></div><button class="sw'+(bo?' on':'')+'" id="eeK"></button></div>'+
-      '<div class="md-lb">Target sets</div>'+
-      '<div id="eeRows">'+setRows(working, bw, 'ee')+'</div>'+
-      '<button class="addex" id="eeAdd" style="margin-top:8px;padding:11px;font-size:12.5px">+ Add set</button>'+
+      '<div class="md-s" style="margin-top:12px">You can still add or remove sets on the day.</div>'+
       '<div class="md-btns"><button class="b-no" data-close>Cancel</button><button class="b-go" id="eeGo">Save</button></div>'
     );
-    document.getElementById('eeB').onclick = ()=>{ grab(); bw = !bw; draw(); };
-    document.getElementById('eeK').onclick = ()=>{ grab(); bo = !bo; draw(); };
-    document.getElementById('eeAdd').onclick = ()=>{
-      grab();
-      const l = working[working.length-1]||{reps:6,weight:null};
-      working.push({reps:l.reps, weight:l.weight}); draw();
+    document.getElementById('eeB').onclick = ()=>{
+      nm = document.getElementById('eeN').value;
+      n = num(document.getElementById('eeS').value) || n;
+      bw = !bw; draw();
     };
-    document.getElementById('eeRows').addEventListener('click', e=>{
-      const b = e.target.closest('[data-rmset]'); if(!b) return;
-      grab();
-      if(working.length<=1){ toast('Keep at least one set'); return; }
-      working.splice(+b.dataset.rmset,1); draw();
-    });
     document.getElementById('eeGo').onclick = ()=>{
-      grab();
-      const name = String(nm).trim();
+      const name = String(document.getElementById('eeN').value).trim();
       if(!name){ toast('Name cannot be empty'); return; }
-      if(!working.length){ toast('Add at least one set'); return; }
+      const cnt = num(document.getElementById('eeS').value);
       ex.name = name;
-      ex.level = Math.max(1, num(lv)||1);
-      ex.phase = ph;
       ex.bw = bw;
-      ex.backoff = working.length>=2 ? bo : false;
-      ex.target = working.map(s=>({reps:s.reps, weight: bw?null:s.weight}));
-      ex.confirmed = true;
-      const d = getDraft(curDay); if(d.sets[ex.id]) delete d.sets[ex.id];
+      ex.sets = Math.max(1, Math.min(12, cnt==null?4:Math.round(cnt)));
       save(); closeModal(); render(); toast('Saved');
     };
   };
@@ -1649,74 +1440,31 @@ function modalMoveEx(ex){
 }
 
 function modalAddEx(){
-  let working = [{reps:10,weight:null},{reps:8,weight:null},{reps:6,weight:null},{reps:6,weight:null}];
-  let bw = false;
+  let bw = false, nm = '', n = 4;
   const draw = ()=>{
     openModal(
       '<div class="md-g"></div>'+
       '<div class="md-t">New exercise</div>'+
-      '<div class="md-s">Added to '+DAYN[curDay]+' at level 1.</div>'+
-      '<div class="fld" style="margin-top:14px"><label>Exercise name</label><input id="axN" placeholder="e.g. Cable fly" autocomplete="off"></div>'+
+      '<div class="md-s">Added to the bottom of '+DAYN[curDay]+'.</div>'+
+      '<div class="fld" style="margin-top:14px"><label>Exercise name</label><input id="axN" value="'+esc(nm)+'" placeholder="e.g. Cable fly" autocomplete="off"></div>'+
+      '<div class="fld"><label>Sets to show by default</label><input id="axS" inputmode="numeric" value="'+n+'"></div>'+
       '<div class="tog"><div class="tt">Bodyweight exercise<i>No weight entry, reps only</i></div><button class="sw'+(bw?' on':'')+'" id="axB"></button></div>'+
-      '<div class="md-lb">Starting target — or leave blank and let your first session set it</div>'+
-      '<div id="axRows">'+setRows(working, bw, 'ax')+'</div>'+
-      '<button class="addex" id="axAdd" style="margin-top:8px;padding:11px;font-size:12.5px">+ Add set</button>'+
       '<div class="md-btns"><button class="b-no" data-close>Cancel</button><button class="b-go" id="axGo">Add exercise</button></div>'
     );
-    const nameEl = document.getElementById('axN');
-    if(draw._name) nameEl.value = draw._name;
     document.getElementById('axB').onclick = ()=>{
-      draw._name = nameEl.value;
-      working = readRows(working.length, bw, 'ax'); bw = !bw; draw();
+      nm = document.getElementById('axN').value;
+      n = num(document.getElementById('axS').value) || n;
+      bw = !bw; draw();
     };
-    document.getElementById('axAdd').onclick = ()=>{
-      draw._name = nameEl.value;
-      working = readRows(working.length, bw, 'ax');
-      const l = working[working.length-1]||{reps:6,weight:null};
-      working.push({reps:l.reps, weight:l.weight}); draw();
-    };
-    document.getElementById('axRows').addEventListener('click', e=>{
-      const b = e.target.closest('[data-rmset]'); if(!b) return;
-      draw._name = nameEl.value;
-      working = readRows(working.length, bw, 'ax');
-      if(working.length<=1){ toast('Keep at least one set'); return; }
-      working.splice(+b.dataset.rmset,1); draw();
-    });
     document.getElementById('axGo').onclick = ()=>{
-      const nm = nameEl.value.trim();
-      if(!nm){ toast('Give it a name'); return; }
-      const sets = readRows(working.length, bw, 'ax');
-      const ex = mkEx(nm, {bw:bw, reps: sets.length?sets.map(s=>s.reps):[10,8,6,6]});
-      if(sets.length) ex.target = sets.map(s=>({reps:s.reps, weight:s.weight}));
-      ex.backoff = ex.target.length>=2 && ex.target[ex.target.length-1].reps===ex.target[ex.target.length-2].reps;
-      S.days[curDay].push(ex);
-      draw._name = '';
-      save(); closeModal(); render(); toast(nm+' added');
+      const name = String(document.getElementById('axN').value).trim();
+      if(!name){ toast('Give it a name'); return; }
+      const cnt = num(document.getElementById('axS').value);
+      S.days[curDay].push(mkEx(name, {bw:bw, sets: Math.max(1, Math.min(12, cnt==null?4:Math.round(cnt)))}));
+      save(); closeModal(); render(); toast(name+' added');
     };
   };
-  draw._name='';
   draw();
-}
-
-function modalStalled(){
-  const list = stalledList();
-  const body = list.length
-    ? list.map(s=>'<div class="hrow">'+
-        '<div class="hd" style="width:58px"><b>'+DAYN[s.day]+'</b>'+s.n+' sessions</div>'+
-        '<div class="hs2" style="font-family:\'DM Sans\',sans-serif;font-size:13px">'+esc(s.ex.name)+
-          '<div style="font-size:11px;color:var(--mu2);margin-top:2px;font-family:\'DM Mono\',monospace">'+esc(fmtSets(s.ex.target, s.ex.bw))+'</div>'+
-        '</div>'+
-        '<span class="hl">L'+s.ex.level+'</span>'+
-      '</div>').join('')
-    : '<div class="empty" style="padding:26px 0">Nothing is stalling. Everything has moved recently.</div>';
-  openModal(
-    '<div class="md-g"></div>'+
-    '<div class="md-t">Not moving</div>'+
-    '<div class="md-s">These have stayed on the same level for '+STALL_AT+' sessions or more. '+
-      'If any of them still feel hard, leave them. If they do not, that is where your progress is leaking.</div>'+
-    '<div style="margin-top:14px">'+body+'</div>'+
-    '<div class="md-btns"><button class="b-no" data-close>Close</button></div>'
-  );
 }
 
 function modalDate(){
@@ -1787,7 +1535,7 @@ function modalWeek(){
   };
   document.getElementById('wkClose').onclick = ()=>{
     openModal('<div class="md-g"></div><div class="md-t">Close week '+S.week.number+'?</div>'+
-      '<div class="md-s">Your sessions stay in History. The week counter moves to '+(S.week.number+1)+' and the day ticks reset. Levels and targets are not affected.</div>'+
+      '<div class="md-s">Your sessions stay in History. The week counter moves to '+(S.week.number+1)+' and the day ticks reset. Your exercises are not affected.</div>'+
       '<div class="md-btns"><button class="b-no" data-close>Cancel</button><button class="b-go" id="fwGo">Close week</button></div>');
     document.getElementById('fwGo').onclick = finishWeek;
   };
@@ -1800,7 +1548,7 @@ function modalSettings(){
     '<div class="md-lb" style="margin-top:16px">Rest timer</div>'+
     '<div class="fld"><label>Seconds between sets</label><input id="stRest" inputmode="numeric" value="'+S.settings.rest+'"></div>'+
     '<div class="tog"><div class="tt">Auto-start on set tick<i>Timer runs the moment you tick a set</i></div><button class="sw'+(S.settings.autoTimer?' on':'')+'" id="stAuto"></button></div>'+
-    '<div class="tog"><div class="tt">Beep &amp; vibrate<i>When the rest is up</i></div><button class="sw'+(S.settings.sound?' on':'')+'" id="stSnd"></button></div>'+
+    '<div class="tog"><div class="tt">Beep when rest ends<i>iPhone cannot vibrate from a web page</i></div><button class="sw'+(S.settings.sound?' on':'')+'" id="stSnd"></button></div>'+
     '<div class="md-lb">Weigh-in</div>'+
     '<div class="fld"><label>Reminder day</label><select id="stWd">'+
       ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'].map((d,i)=>'<option value="'+i+'"'+(S.settings.weighDay===i?' selected':'')+'>'+d+'</option>').join('')+
@@ -1830,7 +1578,7 @@ function modalSettings(){
     if(b.dataset.s==='restore') doRestore();
     if(b.dataset.s==='wipe'){
       openModal('<div class="md-g"></div><div class="md-t">Reset everything?</div>'+
-        '<div class="md-s">Every session, level, target and weigh-in is deleted and the app goes back to the starting exercise list. Download a backup first if you are not sure.</div>'+
+        '<div class="md-s">Every session, exercise and weigh-in is deleted and the app goes back to the starting exercise list. Download a backup first if you are not sure.</div>'+
         '<div class="md-btns"><button class="b-no" data-close>Cancel</button><button class="b-rd" id="wipeGo">Erase all data</button></div>');
       document.getElementById('wipeGo').onclick=()=>{
         S = freshState(); save(); closeModal(); curDay='push'; setView('workout'); render();
@@ -1854,7 +1602,26 @@ function modalSettings(){
 /* =========================================================
    TIMER
    ========================================================= */
-let tState = 'idle', tLeft = 0, tInt = null, tTotal = 0;
+/* The countdown runs against the wall clock, not against interval ticks.
+   iOS freezes timers the moment you leave the page, so anything that counts
+   by decrementing a variable stops dead when you switch apps. Storing the
+   finish time and subtracting means the clock is always right when you come
+   back, and survives the tab being reloaded underneath you. */
+const TKEY = 'forge_rest';
+let tState = 'idle', tLeft = 0, tInt = null, tTotal = 0, tEnd = 0, tDoneT = null;
+let _ac = null;
+
+/* One audio context, unlocked by the tap that starts the rest. Creating it
+   fresh inside the beep fails when no gesture is recent. */
+function audioCtx(){
+  try{
+    const AC = window.AudioContext||window.webkitAudioContext; if(!AC) return null;
+    if(!_ac) _ac = new AC();
+    if(_ac.state === 'suspended') _ac.resume();
+    return _ac;
+  }catch(e){ return null; }
+}
+
 function renderTimerVisibility(){
   const on = curView==='workout';
   document.getElementById('bbar').classList.toggle('show', on);
@@ -1863,6 +1630,7 @@ function renderTimerVisibility(){
 }
 function paintTimer(){
   const el = document.getElementById('timer');
+  if(!el) return;
   const m = Math.floor(Math.max(0,tLeft)/60), s = Math.max(0,tLeft)%60;
   document.getElementById('tVal').textContent = m+':'+String(s).padStart(2,'0');
   el.classList.toggle('run', tState==='run');
@@ -1871,40 +1639,90 @@ function paintTimer(){
   const frac = (tState==='idle') ? 0 : (tTotal ? Math.max(0,tLeft)/tTotal : 0);
   document.getElementById('tFill').style.width = (frac*100).toFixed(1)+'%';
 }
+function storeTimer(){
+  try{
+    if(tState==='run') localStorage.setItem(TKEY, JSON.stringify({end:tEnd, total:tTotal}));
+    else localStorage.removeItem(TKEY);
+  }catch(e){}
+}
 function resetTimer(){
-  clearInterval(tInt); tInt=null; tState='idle';
+  clearInterval(tInt); tInt=null;
+  clearTimeout(tDoneT); tDoneT=null;
+  tState='idle'; tEnd=0;
   tTotal = S.settings.rest; tLeft = S.settings.rest;
+  storeTimer(); paintTimer();
+}
+function timerDone(lateBy){
+  tLeft = 0; tState = 'done';
+  clearInterval(tInt); tInt = null;
+  storeTimer(); paintTimer(); buzz();
+  if(lateBy >= 3){
+    const m = Math.floor(lateBy/60), s = lateBy%60;
+    toast('Rest finished ' + (m ? m+'m '+s+'s' : s+'s') + ' ago');
+  }
+  clearTimeout(tDoneT);
+  tDoneT = setTimeout(()=>{ if(tState==='done') resetTimer(); }, 8000);
+}
+function tTick(){
+  if(tState!=='run') return;
+  const left = (tEnd - Date.now())/1000;
+  if(left <= 0){ timerDone(Math.round(-left)); return; }
+  tLeft = Math.ceil(left);
   paintTimer();
 }
 function startTimer(){
-  clearInterval(tInt);
-  tTotal = S.settings.rest; tLeft = S.settings.rest; tState='run';
-  paintTimer();
-  tInt = setInterval(()=>{
-    tLeft--;
-    if(tLeft<=0){
-      tLeft=0; tState='done'; clearInterval(tInt); tInt=null;
-      paintTimer(); buzz();
-      setTimeout(()=>{ if(tState==='done') resetTimer(); }, 5000);
-    }else paintTimer();
-  },1000);
+  clearInterval(tInt); clearTimeout(tDoneT); tDoneT=null;
+  audioCtx();
+  tTotal = S.settings.rest;
+  tEnd = Date.now() + tTotal*1000;
+  tLeft = tTotal; tState = 'run';
+  storeTimer(); paintTimer();
+  tInt = setInterval(tTick, 250);
 }
+/* Pick the countdown up wherever the clock actually is. */
+function resyncTimer(){
+  if(tState!=='run') return;
+  clearInterval(tInt); tInt=null;
+  const left = (tEnd - Date.now())/1000;
+  if(left <= 0){ timerDone(Math.round(-left)); return; }
+  tLeft = Math.ceil(left); paintTimer();
+  tInt = setInterval(tTick, 250);
+}
+/* A rest that was running when the page was last closed is still running. */
+function restoreTimer(){
+  try{
+    const raw = localStorage.getItem(TKEY); if(!raw) return;
+    const o = JSON.parse(raw);
+    if(!o || !o.end) return;
+    tTotal = o.total || S.settings.rest;
+    tEnd = o.end;
+    if(tEnd - Date.now() <= 0){ localStorage.removeItem(TKEY); return; }
+    tState = 'run'; resyncTimer();
+  }catch(e){}
+}
+document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) resyncTimer(); });
+window.addEventListener('pageshow', resyncTimer);
+window.addEventListener('focus', resyncTimer);
+
 function buzz(){
   if(!S.settings.sound) return;
+  /* Android honours this. iOS Safari does not implement the Vibration API at
+     all, so the screen flash below is the fallback there. */
   try{ if(navigator.vibrate) navigator.vibrate([170,90,170]); }catch(e){}
+  const el = document.getElementById('timer');
+  if(el){ el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash');
+          setTimeout(()=>el.classList.remove('flash'), 1500); }
   try{
-    const AC = window.AudioContext||window.webkitAudioContext; if(!AC) return;
-    const c = new AC();
-    [0,0.22].forEach(off=>{
+    const c = audioCtx(); if(!c) return;
+    [0,0.22,0.44].forEach(off=>{
       const o=c.createOscillator(), g=c.createGain();
       o.type='sine'; o.frequency.value=780;
       g.gain.setValueAtTime(0.0001,c.currentTime+off);
-      g.gain.exponentialRampToValueAtTime(0.25,c.currentTime+off+0.02);
+      g.gain.exponentialRampToValueAtTime(0.3,c.currentTime+off+0.02);
       g.gain.exponentialRampToValueAtTime(0.0001,c.currentTime+off+0.18);
       o.connect(g); g.connect(c.destination);
       o.start(c.currentTime+off); o.stop(c.currentTime+off+0.2);
     });
-    setTimeout(()=>{ try{c.close();}catch(e){} }, 900);
   }catch(e){}
 }
 
@@ -1968,11 +1786,11 @@ function doRestore(){
   inp.click();
 }
 function doCSV(){
-  const rows = [['Date','Week','Day','Exercise','Level','Set','Reps','Weight kg','Felt']];
+  const rows = [['Date','Week','Day','Exercise','Set','Reps','Weight kg','Felt']];
   S.history.slice().sort((a,b)=>a.date<b.date?-1:1).forEach(s=>{
     s.exercises.forEach(e=>{
       e.sets.forEach((st,i)=>{
-        rows.push([s.date, s.week, DAYN[s.day], e.name, e.level, i+1, st.reps, e.bw?'BW':(st.weight==null?'':trimNum(st.weight)), e.felt||'']);
+        rows.push([s.date, s.week, DAYN[s.day], e.name, i+1, st.reps, e.bw?'BW':(st.weight==null?'':trimNum(st.weight)), e.felt||'']);
       });
     });
   });
@@ -1999,8 +1817,8 @@ function reportHTML(){
     body += '<section class="pg">'+
       '<div class="bar" style="background:'+COL[s.day]+'"></div>'+
       '<div class="ph"><h2>'+DAYN[s.day]+'</h2><div class="pm">'+fmtDateLong(s.date)+' · Week '+s.week+'</div></div>'+
-      '<table><thead><tr><th>Exercise</th><th>Lvl</th><th>Sets logged</th><th>Felt</th></tr></thead><tbody>'+
-      s.exercises.map(e=>'<tr><td><b>'+esc(e.name)+'</b></td><td>'+e.level+'</td><td class="m">'+esc(fmtSets(e.sets,e.bw))+'</td><td>'+
+      '<table><thead><tr><th>Exercise</th><th>Sets</th><th>What was logged</th><th>Felt</th></tr></thead><tbody>'+
+      s.exercises.map(e=>'<tr><td><b>'+esc(e.name)+'</b></td><td>'+e.sets.length+'</td><td class="m">'+esc(fmtSets(e.sets,e.bw))+'</td><td>'+
         (e.felt?'<span class="p '+e.felt+'">'+(e.felt==='ok'?'JUST RIGHT':e.felt.toUpperCase())+'</span>':'<span class="p done">DONE</span>')+'</td></tr>').join('')+
       '</tbody></table>'+
     '</section>';
@@ -2014,10 +1832,10 @@ function reportHTML(){
       const firstE = first ? first.exercises.find(e=>e.exId===ex.id) : null;
       const count = sess.reduce((a,s)=>a+(s.exercises.some(e=>e.exId===ex.id)?1:0),0);
       if(!count) return '';
-      return '<tr><td><b>'+esc(ex.name)+'</b></td><td>'+count+'</td><td class="m">'+esc(firstE?fmtSets(firstE.sets,ex.bw):'—')+'</td><td class="m">'+esc(ex.last?fmtSets(ex.last,ex.bw):'—')+'</td><td>L'+ex.level+'</td></tr>';
+      return '<tr><td><b>'+esc(ex.name)+'</b></td><td>'+count+'</td><td class="m">'+esc(firstE?fmtSets(firstE.sets,ex.bw):'—')+'</td><td class="m">'+esc(ex.last?fmtSets(ex.last,ex.bw):'—')+'</td><td>'+(ex.sets||'—')+'</td></tr>';
     }).filter(Boolean).join('');
     if(!rows) return;
-    summary += '<h3 style="color:'+COL[d.k]+'">'+d.n+'</h3><table><thead><tr><th>Exercise</th><th>Sessions</th><th>Started at</th><th>Now at</th><th>Level</th></tr></thead><tbody>'+rows+'</tbody></table>';
+    summary += '<h3 style="color:'+COL[d.k]+'">'+d.n+'</h3><table><thead><tr><th>Exercise</th><th>Sessions</th><th>Started at</th><th>Now at</th><th>Sets</th></tr></thead><tbody>'+rows+'</tbody></table>';
   });
   summary += '</section>';
 
@@ -2171,7 +1989,6 @@ function onAppClick(e){
     if(act.dataset.act==='finweek') modalWeek();
     if(act.dataset.act==='pickdate') modalDate();
     if(act.dataset.act==='dobackup') doBackup();
-    if(act.dataset.act==='showstall') modalStalled();
     return;
   }
 
@@ -2195,12 +2012,8 @@ function onAppClick(e){
     const wasComplete = exComplete(curDay, ex);
     const rows = draftRows(curDay, ex);
     const row = ok.closest('.srow');
-    // pull current input values in first
+    // pull current input values in, exactly as typed. Nothing is filled in.
     row.querySelectorAll('[data-f]').forEach(inp=>{ rows[i][inp.dataset.f] = inp.value; });
-    // if blank, accept the ghost
-    const g = ghostFor(ex,i);
-    if(String(rows[i].reps)==='' && g.reps!==''){ rows[i].reps = g.reps; }
-    if(!ex.bw && String(rows[i].weight)==='' && g.weight!==''){ rows[i].weight = g.weight; }
     rows[i].done = !rows[i].done;
     save();
     render();
@@ -2222,9 +2035,11 @@ function onAppClick(e){
     save(); render(); return;
   }
 
-  // level up
-  const lu = t.closest('[data-lvup]');
-  if(lu){ const ex = findEx(lu.dataset.lvup); if(ex) modalLevelUp(ex); return; }
+  // add or remove a set row
+  const ar = t.closest('[data-addrow]');
+  if(ar){ const ex = findEx(ar.dataset.addrow); if(ex){ addSetRow(curDay, ex); render(); } return; }
+  const rr = t.closest('[data-rmrow]');
+  if(rr){ const ex = findEx(rr.dataset.rmrow); if(ex){ removeSetRow(curDay, ex); render(); } return; }
 
   // per-exercise history
   const eh = t.closest('[data-exhist]');
@@ -2356,6 +2171,7 @@ function boot(){
   bind();
   renderLanding();
   resetTimer();
+  restoreTimer();
   const nd = nextDay(); if(nd) curDay = nd;
   render();
 }
@@ -2366,13 +2182,13 @@ window.__forge = {
   get S(){ return S; },
   set S(v){ S = v; },
   render:render, save:save, load:load, freshState:freshState,
-  suggestNext:suggestNext, finishSession:finishSession, finishWeek:finishWeek,
+  finishSession:finishSession, finishWeek:finishWeek,
   setDay:function(d){ curDay=d; render(); },
   getDay:function(){ return curDay; },
   setView:setView, migrate:migrate, fmtSets:fmtSets, nextDay:nextDay,
   reportHTML:reportHTML, draftRows:draftRows, getDraft:getDraft, findEx:findEx,
-  exHistory:exHistory, feltAdvice:feltAdvice, draftDate:draftDate,
-  levelRun:levelRun, stalledList:stalledList, backupDue:backupDue,
+  exHistory:exHistory, draftDate:draftDate, backupDue:backupDue,
+  addSetRow:addSetRow, removeSetRow:removeSetRow, ghostFor:ghostFor,
   bannerQueue:bannerQueue, markBackedUp:markBackedUp,
   setDraftDate:setDraftDate, weekForDate:weekForDate,
   exComplete:function(ex){ return exComplete(curDay, ex); }
